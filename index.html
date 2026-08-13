@@ -460,6 +460,15 @@ button{cursor:pointer}
 }
 .icon-editor-panel textarea{min-height:52px}
 
+
+#cropStage img{
+  user-select:none;
+  -webkit-user-drag:none;
+  cursor:grab;
+  touch-action:none;
+}
+#cropStage.dragging img{cursor:grabbing}
+
 </style>
 </head>
 <body>
@@ -1262,7 +1271,7 @@ function placeItem(id,x,y){
 }
 function cropStyle(img,c){
   c=c||{x:0,y:0,zoom:1};
-  img.style.transform=`translate(${c.x||0}px,${c.y||0}px) scale(${c.zoom||1})`;
+  img.style.transform=`translate(${Number(c.x||0)}%,${Number(c.y||0)}%) scale(${Number(c.zoom||1)})`;
 }
 function renderPlaced(){
   const c=$('#canvas');c.querySelectorAll('.placed').forEach(e=>e.remove());
@@ -1326,6 +1335,19 @@ function startPlacedDrag(e,id,el){
   window.addEventListener('pointercancel',up,{once:true});
 }
 
+
+function updateSelectedCommentRealtime(){
+  if(!selectedId)return;
+  const value=$('#commentInput')?.value ?? '';
+  mutate(s=>{
+    if(!s.items[selectedId])return;
+    s.items[selectedId].comment=value;
+  });
+  const it=items.find(x=>x.id===selectedId);
+  if(it&&appState().items[selectedId])it.local=appState().items[selectedId];
+  renderPlaced();
+}
+
 function resetIconEditor(){
   selectedId=null;
   if($('#iconEditorContent'))$('#iconEditorContent').style.display='none';
@@ -1369,14 +1391,68 @@ function openCrop(){
   $('#cropModal').classList.add('open');requestAnimationFrame(updateCrop);
 }
 function updateCrop(){
-  $('#cropImg').style.transform=`translate(calc(-50% + ${cropWork.x||0}px),calc(-50% + ${cropWork.y||0}px)) scale(${cropWork.zoom||1})`;
+  if(!cropWork)return;
+  const img=$('#cropImg');
+  const z=Number(cropWork.zoom||1);
+  const x=Number(cropWork.x||0);
+  const y=Number(cropWork.y||0);
+  img.style.transform=`translate(${x}%,${y}%) scale(${z})`;
+  $('#cropZoom').value=z;
 }
 function setupCrop(){
-  let p=null,st=$('#cropStage');
-  st.addEventListener('pointerdown',e=>{p={x:e.clientX,y:e.clientY,ox:cropWork?.x||0,oy:cropWork?.y||0};st.setPointerCapture(e.pointerId)});
-  st.addEventListener('pointermove',e=>{if(!p)return;cropWork.x=p.ox+e.clientX-p.x;cropWork.y=p.oy+e.clientY-p.y;updateCrop()});
-  st.addEventListener('pointerup',()=>p=null);
-  $('#zoomRange').oninput=e=>{cropWork.zoom=+e.target.value;updateCrop()};
+  const stage=$('#cropStage');
+  const img=$('#cropImg');
+  const zoom=$('#cropZoom');
+
+  // Zoom slider
+  zoom.addEventListener('input',()=>{
+    if(!cropWork)return;
+    cropWork.zoom=Number(zoom.value);
+    updateCrop();
+  });
+
+  // Direct image drag inside crop stage
+  let dragging=false;
+  let startX=0,startY=0,startCropX=0,startCropY=0;
+
+  const move=e=>{
+    if(!dragging||!cropWork)return;
+    const r=stage.getBoundingClientRect();
+    const dx=(e.clientX-startX)/Math.max(1,r.width)*100;
+    const dy=(e.clientY-startY)/Math.max(1,r.height)*100;
+
+    // crop x/y are translation percentages. Clamp so image can't be thrown absurdly far away.
+    cropWork.x=Math.max(-100,Math.min(100,startCropX+dx));
+    cropWork.y=Math.max(-100,Math.min(100,startCropY+dy));
+    updateCrop();
+  };
+
+  const end=()=>{
+    if(!dragging)return;
+    dragging=false;
+    stage.classList.remove('dragging');
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',end);
+    window.removeEventListener('pointercancel',end);
+  };
+
+  stage.addEventListener('pointerdown',e=>{
+    if(!cropWork)return;
+    if(e.button!=null&&e.button!==0)return;
+    e.preventDefault();
+    dragging=true;
+    startX=e.clientX;
+    startY=e.clientY;
+    startCropX=Number(cropWork.x||0);
+    startCropY=Number(cropWork.y||0);
+    stage.classList.add('dragging');
+    stage.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove',move,{passive:true});
+    window.addEventListener('pointerup',end,{once:true});
+    window.addEventListener('pointercancel',end,{once:true});
+  });
+
+  img.addEventListener('dragstart',e=>e.preventDefault());
 }
 function saveCrop(){
   mutate(s=>s.items[selectedId].crop=cropWork);
@@ -1533,6 +1609,7 @@ $('#cropBtn').onclick=openCrop;
 $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
 $('#displaySettingsToggle').onclick=toggleDisplayPanel;
+$('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
 $('#clearTemplateBtn').onclick=clearCurrentTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 
