@@ -1118,6 +1118,53 @@ button{cursor:pointer}
   background:#f4f7f8 !important;
 }
 
+
+.stage-area-toolbar{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:30px;
+}
+.new-template-btn{
+  height:28px;
+  padding:0 10px !important;
+  font-size:9px !important;
+  border-radius:7px !important;
+  white-space:nowrap;
+}
+
+
+.past-template-grid .template-card{
+  position:relative;
+  min-width:0;
+}
+.past-template-grid .template-card.active .template-tab{
+  border-color:var(--accent);
+  background:var(--soft);
+}
+.past-template-grid .template-tab{
+  padding-bottom:28px !important;
+}
+.template-delete-btn{
+  position:absolute;
+  left:6px;
+  right:6px;
+  bottom:6px;
+  height:20px;
+  border:1px solid #e2e5e7;
+  border-radius:5px;
+  background:rgba(255,255,255,.94);
+  color:#8a5555;
+  font-size:8px;
+  cursor:pointer;
+}
+.template-delete-btn:hover{
+  background:#fff4f4;
+  border-color:#e5caca;
+}
+
 </style>
 </head>
 <body>
@@ -1217,7 +1264,11 @@ button{cursor:pointer}
     <div class="splitter" id="splitter" title="ドラッグして幅を変更"></div>
 
     <section class="stage-shell">
-      <div class="stage-area-label">テンプレ操作</div>
+      <div class="stage-area-toolbar">
+        <div class="stage-area-label">テンプレ操作</div>
+        <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレ</button>
+        <input id="newTemplateFile" type="file" accept="image/*" hidden>
+      </div>
       <div class="stage">
         <div class="canvas" id="canvas">
           <img class="template-img" id="templateImg" alt="">
@@ -1584,7 +1635,11 @@ function clearLoadedCache(){
 }
 
 function saveSettings(saveToken=false){
+  const old=loadJSON(SETTINGS,{});
   const useFavicon=$('#useFavicon').checked;
+  const typedToken=$('#apiToken').value.trim();
+  const shouldKeepToken=saveToken || (!!old.saveApiToken && !!old.apiToken);
+
   const s={
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
@@ -1592,8 +1647,8 @@ function saveSettings(saveToken=false){
     useFavicon,
     propColor:$('#propColor').value.trim(),
     propOrder:$('#propOrder').value.trim(),
-    saveApiToken:!!saveToken,
-    apiToken:saveToken?$('#apiToken').value:''
+    saveApiToken:shouldKeepToken,
+    apiToken:saveToken ? typedToken : (shouldKeepToken ? old.apiToken : '')
   };
   saveJSON(SETTINGS,s);
 }
@@ -1607,8 +1662,11 @@ function restoreSettings(){
 }
 function clearToken(){
   const s=loadJSON(SETTINGS,{});
-  s.apiToken='';s.saveApiToken=false;saveJSON(SETTINGS,s);
+  s.saveApiToken=false;
+  s.apiToken='';
+  saveJSON(SETTINGS,s);
   $('#apiToken').value='';
+  $('#connectionStatus').textContent='保存したAPIキーを削除しました';
 }
 
 
@@ -1777,10 +1835,13 @@ async function renderTemplateTabs(){
   }
   const current=currentTemplateId();
   recs.forEach(rec=>{
+    const card=document.createElement('div');
+    card.className='template-card'+(rec.id===current?' active':'');
+    card.title=rec.name||'保存テンプレ';
+
     const b=document.createElement('button');
     b.type='button';
     b.className='template-tab'+(rec.id===current?' active':'');
-    b.title=rec.name||'保存テンプレ';
     const im=document.createElement('img');
     im.className='template-tab-thumb';
     im.src=rec.dataUrl||'';
@@ -1789,9 +1850,56 @@ async function renderTemplateTabs(){
     nm.textContent=rec.name||'保存テンプレ';
     b.append(im,nm);
     b.onclick=async()=>{await switchTemplate(rec.id);showLibraryPage('icons')};
-    box.appendChild(b);
+
+    const del=document.createElement('button');
+    del.type='button';
+    del.className='template-delete-btn';
+    del.textContent='削除';
+    del.title='このテンプレを削除';
+    del.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await deleteSavedTemplate(rec.id);
+    };
+
+    card.append(b,del);
+    box.appendChild(card);
   });
 }
+
+async function deleteSavedTemplate(id){
+  if(!id)return;
+  const rec=await tplGetRecord(id);
+  const name=rec?.name||'このテンプレ';
+  if(!confirm(`「${name}」を削除しますか？\nこのテンプレの配置・補足・切り抜き設定も削除されます。`))return;
+
+  const wasCurrent=id===currentTemplateId();
+  await tplDeleteRecord(id);
+
+  const all=templateStates();
+  delete all[id];
+  setTemplateStates(all);
+
+  if(wasCurrent){
+    localStorage.removeItem(TEMPLATE_CURRENT);
+    const recs=await tplAllRecords();
+    if(recs.length){
+      localStorage.setItem(TEMPLATE_CURRENT,recs[0].id);
+      showTemplateRecord(recs[0]);
+      restoreTemplatePlacementState(recs[0].id);
+    }else{
+      showTemplateRecord(null);
+      const s=appState();
+      s.items={};
+      saveState(s);
+      renderLibrary();
+      renderPlaced();
+      resetIconEditor();
+    }
+  }
+  await renderTemplateTabs();
+}
+
 async function switchTemplate(id){
   if(!id||id===currentTemplateId())return;
   saveCurrentTemplateState();
@@ -2321,10 +2429,15 @@ $('#cancelSaveApiBtn').onclick=e=>{
 
 $('#confirmSaveApiBtn').onclick=e=>{
   e.preventDefault();
+  const token=$('#apiToken').value.trim();
+  if(!token){
+    alert('先にNotion APIキーを入力してください。');
+    return;
+  }
   saveSettings(true);
   $('#saveConfirmArea').style.display='none';
   $('#helpModal').classList.remove('open');
-  $('#connectionStatus').textContent='APIキーを端末保存しました';
+  $('#connectionStatus').textContent='APIキーをこの端末に保存しました';
 };
 
 $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
@@ -2345,6 +2458,13 @@ $('#showIconsTab').onclick=()=>showLibraryPage('icons');
 $('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
 $('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
 $('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
+$('#newTemplateBtn').onclick=()=>$('#newTemplateFile').click();
+$('#newTemplateFile').onchange=async e=>{
+  const f=e.target.files?.[0];
+  if(!f)return;
+  await saveTemplateFile(f);
+  e.target.value='';
+};
 $('#clearTemplateBtn').onclick=clearCurrentTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 
