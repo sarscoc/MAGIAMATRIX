@@ -22,10 +22,8 @@ button{cursor:pointer}
   border-bottom:1px solid #e7e9eb;z-index:30;
   transition:width .18s ease,border-radius .18s ease
 }
-.header-wrap.collapsed{
-  width:max-content;max-width:100%;border-right:1px solid #e7e9eb;border-radius:0 0 9px 0
-}
-.header-wrap.collapsed .header-mini-left{display:none}
+
+
 .header-wrap.collapsed .header-mini{height:30px;padding:0 6px}
 .header-wrap.collapsed .header-toggle{white-space:nowrap}
 .header-mini{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
@@ -468,6 +466,53 @@ button{cursor:pointer}
   touch-action:none;
 }
 #cropStage.dragging img{cursor:grabbing}
+
+
+.header-wrap{
+  width:100% !important;
+  max-width:none !important;
+  border-right:0 !important;
+  border-radius:0 !important;
+  transition:none !important;
+}
+.header-wrap.collapsed{
+  width:100% !important;
+  max-width:none !important;
+  border-right:0 !important;
+  border-radius:0 !important;
+}
+.header-wrap.collapsed .header-mini-left{
+  display:flex !important;
+}
+.header-wrap.collapsed .header-mini{
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 8px !important;
+}
+.header-wrap.collapsed .header-toggle{
+  white-space:nowrap;
+}
+.header-wrap .header{
+  overflow:hidden;
+  max-height:72px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:
+    max-height .22s ease,
+    opacity .16s ease,
+    padding-top .22s ease,
+    padding-bottom .22s ease,
+    border-width .22s ease;
+}
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border-top-width:0 !important;
+  pointer-events:none;
+}
 
 </style>
 </head>
@@ -1498,13 +1543,20 @@ function setupSplitter(){
 }
 
 function setupHeaderToggle(){
-  const wrap=$('#headerWrap'),btn=$('#headerToggle');
-  const saved=localStorage.getItem('magiaMatrix.headerCollapsed')==='1';
-  if(saved){wrap.classList.add('collapsed');btn.textContent='接続設定を開く ▼';}
+  const wrap=$('#headerWrap');
+  const btn=$('#headerToggle');
+  if(!wrap||!btn)return;
+
+  const apply=(closed)=>{
+    wrap.classList.toggle('collapsed',closed);
+    btn.textContent=closed?'接続設定を開く':'接続設定を閉じる';
+    localStorage.setItem('magiaMatrix.header.collapsed',closed?'1':'0');
+  };
+
+  apply(localStorage.getItem('magiaMatrix.header.collapsed')==='1');
+
   btn.onclick=()=>{
-    const collapsed=wrap.classList.toggle('collapsed');
-    btn.textContent=collapsed?'接続設定を開く ▼':'接続設定を閉じる ▲';
-    localStorage.setItem('magiaMatrix.headerCollapsed',collapsed?'1':'0');
+    apply(!wrap.classList.contains('collapsed'));
   };
 }
 
