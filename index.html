@@ -6,7 +6,7 @@
 <title>Magia Matrix</title>
 <style>
 :root{
-  --bg:#f3f4f5;--panel:#fff;--ink:#202327;--muted:#70777e;--line:#d9dde1;
+  --bg:#f5f6f7;--panel:#fff;--ink:#202327;--muted:#70777e;--line:#d9dde1;
   --accent:#84b5d3;--soft:#edf5fa;--shadow:0 10px 30px rgba(25,35,45,.09);
   --sidebar:300px;--settings:190px;--icon-size:72px;
 }
@@ -18,24 +18,48 @@ button{cursor:pointer}
 
 /* header */
 .header{
-  height:86px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
-  gap:12px;padding:10px 14px;position:sticky;top:0;z-index:30
+  min-height:58px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
+  border-bottom:1px solid #e7e9eb;display:flex;align-items:center;gap:10px;
+  padding:8px 12px;position:sticky;top:0;z-index:30
 }
-.brand{font-weight:850;font-size:18px;white-space:nowrap;margin-right:4px}
+.brand{
+  font-weight:780;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  color:#353b40;white-space:nowrap;margin-right:2px
+}
 .connect-grid{
-  display:grid;grid-template-columns:minmax(170px,1.4fr) minmax(150px,1fr) minmax(210px,1.5fr) repeat(4,minmax(110px,.8fr));
-  gap:7px;align-items:end;flex:1;min-width:0
+  display:grid;grid-template-columns:minmax(150px,.95fr) minmax(240px,1.55fr) repeat(4,minmax(92px,.7fr));
+  gap:6px;align-items:center;flex:1;min-width:0
 }
-.field label{display:block;font-size:10px;color:var(--muted);margin:0 0 3px}
-.field input{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;min-width:0}
-.header-actions{display:flex;gap:6px;align-items:flex-end}
-.btn{height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;white-space:nowrap}
-.btn.primary{background:#202327;color:#fff;border-color:#202327}
-.btn.icon{width:34px;padding:0;font-weight:800;border-radius:50%}
-.status{font-size:11px;color:var(--muted);white-space:nowrap}
+.field{min-width:0}
+.field label{
+  display:block;font-size:9px;line-height:1;color:#8b9298;margin:0 0 3px;
+  letter-spacing:.02em
+}
+.field input{
+  width:100%;height:30px;border:1px solid #dde1e4;border-radius:7px;padding:5px 8px;
+  background:#fafbfb;min-width:0;font-size:11px;color:#30353a;outline:none;
+  transition:border-color .12s,background .12s,box-shadow .12s
+}
+.field input:focus{
+  border-color:#a9c7da;background:#fff;box-shadow:0 0 0 3px rgba(132,181,211,.12)
+}
+.header-actions{display:flex;gap:5px;align-items:center}
+.btn{
+  height:30px;border:1px solid #dce0e3;background:#fff;border-radius:7px;padding:0 9px;
+  white-space:nowrap;font-size:11px;color:#394047
+}
+.btn:hover{background:#f7f8f8}
+.btn.primary{
+  background:#252a2e;color:#fff;border-color:#252a2e;font-weight:700;padding:0 12px
+}
+.btn.primary:hover{background:#15191c}
+.btn.icon{
+  width:30px;padding:0;font-weight:750;border-radius:50%;font-size:12px;color:#68717a
+}
+.status{font-size:10px;color:var(--muted);white-space:nowrap}
 
 /* main layout */
-.workspace{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:calc(100vh - 86px)}
+.workspace{display:grid;grid-template-columns:var(--sidebar) 7px 1fr;min-height:calc(100vh - 58px)}
 .library{
   background:#fff;border-right:1px solid var(--line);padding:12px;min-height:0;
   display:flex;flex-direction:column
@@ -44,9 +68,12 @@ button{cursor:pointer}
 .library-title{font-size:13px;font-weight:800}
 .library-count{font-size:11px;color:var(--muted)}
 .icon-list{
-  overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:2px 2px 18px;
+  overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:9px;padding:2px 2px 18px;
   align-content:start
 }
+.splitter{cursor:col-resize;background:transparent;position:relative;z-index:12}
+.splitter::after{content:"";position:absolute;top:0;bottom:0;left:2px;width:3px;background:#d7dce0;border-radius:3px;transition:.15s}
+.splitter:hover::after,.splitter.dragging::after{background:var(--accent);width:4px;left:1px}
 .source-card{
   border:1px solid var(--line);background:#fff;border-radius:12px;padding:7px 5px;text-align:center;
   user-select:none;cursor:grab;min-width:0;transition:.12s
@@ -59,9 +86,9 @@ button{cursor:pointer}
 .source-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .source-name{font-size:11px;font-weight:700;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.stage-shell{padding:12px;min-width:0}
+.stage-shell{padding:10px;min-width:0}
 .stage{
-  height:calc(100vh - 110px);min-height:620px;background:#fff;border:1px solid var(--line);border-radius:17px;
+  height:calc(100vh - 82px);min-height:620px;background:#fff;border:1px solid var(--line);border-radius:14px;
   box-shadow:var(--shadow);display:grid;grid-template-columns:1fr var(--settings);overflow:hidden;position:relative
 }
 .canvas{
@@ -147,9 +174,11 @@ button{cursor:pointer}
   .field.optional{display:none}
 }
 @media(max-width:760px){
-  .header{height:auto;align-items:flex-start;flex-wrap:wrap}
-  .connect-grid{grid-template-columns:1fr 1fr;width:100%}
+  .header{min-height:auto;align-items:flex-start;flex-wrap:wrap;padding:8px}
+  .brand{font-size:11px;padding-top:6px}
+  .connect-grid{grid-template-columns:1fr 1fr;width:100%;gap:5px}
   .workspace{grid-template-columns:1fr}
+  .splitter{display:none}
   .library{max-height:220px;border-right:0;border-bottom:1px solid var(--line)}
   .icon-list{grid-template-columns:repeat(5,1fr)}
   .stage{height:72vh;min-height:520px;grid-template-columns:1fr 150px}
@@ -159,13 +188,9 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header class="header">
-    <div class="brand">Magia Matrix</div>
+    <div class="brand">MAGIA MATRIX</div>
 
     <div class="connect-grid">
-      <div class="field">
-        <label>Worker URL</label>
-        <input id="workerUrl" placeholder="https://...workers.dev">
-      </div>
       <div class="field">
         <label>Notion API</label>
         <input id="apiToken" type="password" autocomplete="off" placeholder="secret_...">
@@ -198,8 +223,8 @@ button{cursor:pointer}
     </div>
   </header>
 
-  <div class="workspace">
-    <aside class="library">
+  <div class="workspace" id="workspace">
+    <aside class="library" id="libraryPane">
       <div class="library-head">
         <div class="library-title">アイコン</div>
         <div class="library-count" id="libraryCount">0件</div>
@@ -208,6 +233,7 @@ button{cursor:pointer}
         <div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>
       </div>
     </aside>
+    <div class="splitter" id="splitter" title="ドラッグして幅を変更"></div>
 
     <section class="stage-shell">
       <div class="stage">
@@ -299,6 +325,9 @@ button{cursor:pointer}
       <p class="help" style="margin-bottom:0">APIキーの発行・取得・権限設定の方法は、各サービスの公式案内を確認してご自身で設定してください。このページではAPIキーの作り方・取得方法は案内しません。</p>
     </div>
 
+    <h3>接続について</h3>
+    <p class="help">利用者はWorker URLを入力する必要はありません。中継先は公開者がこのHTML内に一度だけ設定します。利用者が入力するのはNotion APIキーとデータベースURL/IDです。</p>
+
     <h3>保存について</h3>
     <ul class="help">
       <li>APIキーは「保存する」を選んだ場合のみ、このブラウザの Local Storage に保存できます。</li>
@@ -344,6 +373,9 @@ button{cursor:pointer}
 </div>
 
 <script>
+// 公開者が一度だけ設定する中継Worker URL。
+const WORKER_URL = "https://REPLACE-WITH-YOUR-WORKER.workers.dev";
+
 const $=s=>document.querySelector(s);
 const SETTINGS='magiaMatrix.redesign.settings.v1';
 const STATE='magiaMatrix.redesign.state.v1';
@@ -401,7 +433,6 @@ function normalize(page,cfg){
 function saveSettings(){
   const keep=$('#saveApiToken').checked;
   const s={
-    workerUrl:$('#workerUrl').value.trim(),
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
     propImage:$('#propImage').value.trim(),
@@ -414,7 +445,7 @@ function saveSettings(){
 }
 function restoreSettings(){
   const s=loadJSON(SETTINGS,{});
-  for(const k of ['workerUrl','notionSource','propName','propImage','propUrl','propColor']){
+  for(const k of ['notionSource','propName','propImage','propUrl','propColor']){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
   $('#saveApiToken').checked=!!s.saveApiToken;
@@ -430,9 +461,10 @@ async function loadNotion(){
   saveSettings();
   const cfg=loadJSON(SETTINGS,{});
   const token=$('#apiToken').value.trim();
-  if(!cfg.workerUrl||!cfg.notionSource||!token){alert('Worker URL・Notion API・データベースURL/IDを入力してください。');return}
+  if(!cfg.notionSource||!token){alert('Notion API・データベースURL/IDを入力してください。');return}
+  if(WORKER_URL.includes('REPLACE-WITH-YOUR-WORKER')){alert('公開者側でWorker URLがまだ設定されていません。');return}
   try{
-    const r=await fetch(cfg.workerUrl.replace(/\/$/,'')+'/notion/read',{
+    const r=await fetch(WORKER_URL.replace(/\/$/,'')+'/notion/read',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({notionToken:token,source:cfg.notionSource})
@@ -586,6 +618,38 @@ function saveCrop(){
   $('#cropModal').classList.remove('open');renderPlaced();openDrawer(selectedId);
 }
 
+
+/* left/right resizable panes */
+function restorePaneWidth(){
+  const s=appState();
+  const w=Math.max(180,Math.min(600,s.libraryWidth||300));
+  document.documentElement.style.setProperty('--sidebar',w+'px');
+}
+function setupSplitter(){
+  const splitter=$('#splitter');
+  let active=false;
+  const move=e=>{
+    if(!active)return;
+    const ws=$('#workspace').getBoundingClientRect();
+    const x=Math.max(180,Math.min(600,e.clientX-ws.left));
+    document.documentElement.style.setProperty('--sidebar',x+'px');
+  };
+  const end=()=>{
+    if(!active)return;
+    active=false;splitter.classList.remove('dragging');
+    const val=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar'));
+    mutate(s=>s.libraryWidth=val);
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',end);
+  };
+  splitter.addEventListener('pointerdown',e=>{
+    active=true;splitter.classList.add('dragging');
+    splitter.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',end);
+  });
+}
+
 /* display settings */
 function restoreDisplay(){
   const d=appState().display||{};
@@ -617,7 +681,7 @@ $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
 $('#clearTemplateBtn').onclick=async()=>{await tplSet('');showTemplate('')};
 
-restoreSettings();restoreDisplay();bindDisplay();setupTemplateDrop();setupCrop();
+restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupTemplateDrop();setupCrop();
 tplGet().then(showTemplate);
 </script>
 </body>
