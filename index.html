@@ -1082,6 +1082,42 @@ button{cursor:pointer}
   margin-top:0 !important;
 }
 
+
+/* 接続設定 開く/閉じるボタンは常に同じ見た目 */
+.header-toggle,
+.header-wrap.collapsed .header-toggle,
+.header-wrap:not(.collapsed) .header-toggle{
+  position:static !important;
+  width:auto !important;
+  min-width:96px !important;
+  height:24px !important;
+  min-height:24px !important;
+  padding:0 9px !important;
+  margin:0 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:1px solid #dfe3e6 !important;
+  border-radius:7px !important;
+  background:#fff !important;
+  color:#596168 !important;
+  font-size:9px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  pointer-events:auto !important;
+  transform:none !important;
+  white-space:nowrap !important;
+  cursor:pointer !important;
+}
+.header-toggle:hover,
+.header-wrap.collapsed .header-toggle:hover,
+.header-wrap:not(.collapsed) .header-toggle:hover{
+  background:#f4f7f8 !important;
+}
+
 </style>
 </head>
 <body>
