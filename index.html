@@ -2082,29 +2082,65 @@ async function createNewTemplate(){
 }
 
 async function renderTemplateTabs(){
-  const box=$('#templateTabs');if(!box)return;
-  const all=await tplAllRecords(),states=templateStates(),current=currentTemplateId(),meaningful=[];
-  for(const rec of all){
+  const box=$('#templateTabs');
+  if(!box)return;
+
+  const all=await tplAllRecords();
+  const states=templateStates();
+  const current=currentTemplateId();
+
+  const meaningful=all.filter(rec=>{
     const st=states[rec.id]?.items||{};
     const hasData=Object.values(st).some(v=>v?.placed||String(v?.comment||'').trim());
-    if(rec.dataUrl||hasData)meaningful.push(rec);
-    else if(rec.id!==current){await tplDeleteRecord(rec.id);delete states[rec.id]}
-  }
-  setTemplateStates(states);
+    return !!rec.dataUrl||hasData;
+  });
+
   box.innerHTML='';
-  if(!meaningful.length){box.innerHTML='<div class="template-tab-empty">まだありません</div>';return}
+  if(!meaningful.length){
+    box.innerHTML='<div class="template-tab-empty">まだありません</div>';
+    return;
+  }
+
   meaningful.forEach(rec=>{
-    const card=document.createElement('div');card.className='template-card'+(rec.id===current?' active':'');
-    const open=document.createElement('button');open.type='button';open.className='template-tab'+(rec.id===current?' active':'');open.title='このテンプレを編集';
-    if(rec.dataUrl){const im=document.createElement('img');im.className='template-tab-thumb';im.src=rec.dataUrl;open.appendChild(im)}
-    const nm=document.createElement('span');nm.className='template-tab-name';
+    const card=document.createElement('div');
+    card.className='template-card'+(rec.id===current?' active':'');
+
+    const open=document.createElement('button');
+    open.type='button';
+    open.className='template-tab'+(rec.id===current?' active':'');
+    open.title='このテンプレを編集';
+
+    if(rec.dataUrl){
+      const im=document.createElement('img');
+      im.className='template-tab-thumb';
+      im.src=rec.dataUrl;
+      open.appendChild(im);
+    }
+
+    const nm=document.createElement('span');
+    nm.className='template-tab-name';
     const legacy=rec.name==='保存テンプレ'?'':(rec.name||'');
     nm.textContent=legacy||(rec.createdAt?new Date(rec.createdAt).toLocaleString():'');
     if(nm.textContent)open.appendChild(nm);
-    open.onclick=async e=>{e.preventDefault();e.stopPropagation();await switchTemplate(rec.id)};
-    const del=document.createElement('button');del.type='button';del.className='template-delete-btn';del.textContent='削除';
-    del.onclick=async e=>{e.preventDefault();e.stopPropagation();await deleteSavedTemplate(rec.id)};
-    card.append(open,del);box.appendChild(card);
+
+    open.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await switchTemplate(rec.id);
+    };
+
+    const del=document.createElement('button');
+    del.type='button';
+    del.className='template-delete-btn';
+    del.textContent='削除';
+    del.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await deleteSavedTemplate(rec.id);
+    };
+
+    card.append(open,del);
+    box.appendChild(card);
   });
 }
 
@@ -2173,14 +2209,39 @@ function showTemplateRecord(rec){
   else{im.removeAttribute('src');c.classList.remove('has-template')}
 }
 async function restoreTemplate(){
-  let id=currentTemplateId(),rec=id?await tplGetRecord(id):null;
-  if(!rec){
-    const recs=await tplAllRecords(),states=templateStates();
-    rec=recs.find(r=>{const st=states[r.id]?.items||{};return !!r.dataUrl||Object.values(st).some(v=>v?.placed||String(v?.comment||'').trim())})||null;
-    if(rec){id=rec.id;localStorage.setItem(TEMPLATE_CURRENT,id)}else localStorage.removeItem(TEMPLATE_CURRENT);
+  const recs=await tplAllRecords();
+  const states=templateStates();
+
+  const isMeaningful=rec=>{
+    if(!rec)return false;
+    const st=states[rec.id]?.items||{};
+    return !!rec.dataUrl||Object.values(st).some(v=>v?.placed||String(v?.comment||'').trim());
+  };
+
+  let id=currentTemplateId();
+  let rec=id?await tplGetRecord(id):null;
+
+  // Recover from old blank/dummy current records without deleting them.
+  if(!isMeaningful(rec)){
+    const real=recs.find(isMeaningful)||null;
+    if(real){
+      rec=real;
+      id=real.id;
+      localStorage.setItem(TEMPLATE_CURRENT,id);
+    }else if(!rec){
+      localStorage.removeItem(TEMPLATE_CURRENT);
+    }
   }
-  if(rec){showTemplateRecord(rec);restoreTemplatePlacementState(id)}
-  else{showTemplateRecord(null);renderLibrary();renderPlaced()}
+
+  if(rec){
+    showTemplateRecord(rec);
+    restoreTemplatePlacementState(id);
+  }else{
+    showTemplateRecord(null);
+    renderLibrary();
+    renderPlaced();
+  }
+
   await renderTemplateTabs();
 }
 async function saveTemplateFile(file){
@@ -2332,52 +2393,72 @@ function cropStyle(img,c){
   img.style.transform=`translate(${Number(c.x||0)}%,${Number(c.y||0)}%) scale(${Number(c.zoom||1)})`;
 }
 function renderPlaced(){
-  const c=$('#canvas');c.querySelectorAll('.placed').forEach(e=>e.remove());
+  const c=$('#canvas');
+  c.querySelectorAll('.placed').forEach(e=>e.remove());
+
   const s=appState(),d=s.display||{};
   document.documentElement.style.setProperty('--icon-size',(d.iconSize||72)+'px');
   c.style.fontFamily=d.fontFamily||'system-ui';
+
   items.forEach(it=>{
-    const l=s.items?.[it.id];if(!l?.placed)return;
-    const el=document.createElement('div');el.className='placed';el.dataset.id=it.id;
-    el.style.left=(l.x??50)+'%';el.style.top=(l.y??50)+'%';
-    const chosen=(d.useIndividualTextColor!==false?(it.color||d.globalTextColor):(safeColor(l.color)||d.globalTextColor))||'#202327';
+    const l=s.items?.[it.id];
+    if(!l?.placed)return;
+
+    const el=document.createElement('div');
+    el.className='placed';
+    el.dataset.id=it.id;
+    el.style.left=(l.x??50)+'%';
+    el.style.top=(l.y??50)+'%';
+
+    const chosen=(d.useIndividualTextColor!==false
+      ? (it.color||d.globalTextColor)
+      : (safeColor(l.color)||d.globalTextColor)
+    )||'#202327';
     el.style.color=chosen;
-    const av=document.createElement('div');av.className='placed-avatar';applyShapeClass(av);
+
+    const av=document.createElement('div');
+    av.className='placed-avatar';
+    applyShapeClass(av);
+
     if(d.iconBorderUseTextColor){
       av.classList.add('use-text-border');
       av.style.setProperty('--icon-border-color',chosen);
     }
-    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);el.append(av);
-    if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
-    if(d.showComment!==false&&String(l.comment||'').trim()){
-      const fs=Math.max(10,(d.commentFontSize||10)*scale);
-      ctx.font=`600 ${fs}px sans-serif`;
-      const lines=exportWrapText(ctx,l.comment,Math.min(out.width*.28,180*scale));
-      const lineH=fs*1.2;
 
-      let tx,ty;
-      if((d.commentPosition||'top')==='side'){
-        ctx.textAlign='left';
-        tx=cx+iconSize/2+3*scale;
-        ty=cy-((lines.length-1)*lineH)/2;
-      }else{
-        ctx.textAlign='center';
-        tx=cx;
-        ty=cy-iconSize/2-2*scale-(lines.length-1)*lineH;
-      }
+    const im=document.createElement('img');
+    im.src=displayImage(it)||'';
+    im.onerror=()=>im.style.display='none';
+    if(currentIconShape()!=='original')cropStyle(im,l.crop);
+    av.appendChild(im);
+    el.appendChild(av);
 
-      lines.forEach((line,i)=>{
-        exportText(ctx,line,tx,ty+i*lineH,color,outline,`600 ${fs}px sans-serif`);
-      });
+    if(d.showName!==false){
+      const n=document.createElement('div');
+      n.className='placed-name';
+      n.textContent=it.name||'';
+      el.appendChild(n);
     }
+
+    if(d.showComment!==false&&String(l.comment||'').trim()){
+      const cm=document.createElement('div');
+      cm.className=
+        'placed-comment comment-'+(d.commentPosition||'top')+
+        ' '+((d.commentBox||'on')==='on'?'with-box':'no-box');
+      cm.textContent=l.comment;
+      cm.style.fontSize=(d.commentFontSize||10)+'px';
+      el.appendChild(cm);
+    }
+
     el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
     el.addEventListener('dblclick',e=>{
       e.preventDefault();
       e.stopPropagation();
       openDrawer(it.id);
     });
-    c.append(el);
+
+    c.appendChild(el);
   });
+
   document.querySelectorAll('.placed-name,.placed-comment').forEach(applyTextOutline);
 }
 function startPlacedDrag(e,id,el){
