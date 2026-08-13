@@ -48,6 +48,10 @@ button{cursor:pointer}
 .api-input-row{display:flex;gap:5px;align-items:center}
 .api-input-row input{flex:1}
 .api-input-row .btn.icon{flex:0 0 30px}
+.field input:disabled{
+  background:#f1f2f3;color:#9aa0a5;cursor:not-allowed;border-color:#e3e5e7
+}
+.field.disabled label{color:#a4a9ae}
 .field input:focus{
   border-color:#a9c7da;background:#fff;box-shadow:0 0 0 3px rgba(132,181,211,.12)
 }
@@ -82,6 +86,20 @@ button{cursor:pointer}
 .splitter{cursor:col-resize;background:transparent;position:relative;z-index:12}
 .splitter::after{content:"";position:absolute;top:0;bottom:0;left:2px;width:3px;background:#d7dce0;border-radius:3px;transition:.15s}
 .splitter:hover::after,.splitter.dragging::after{background:var(--accent);width:4px;left:1px}
+
+.library-loading{
+  flex:1;min-height:180px;display:none;place-items:center;text-align:center;color:#7b838a
+}
+.library-loading.active{display:grid}
+.loading-inner{display:flex;flex-direction:column;align-items:center;gap:10px}
+.loading-spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid #e2e7ea;border-top-color:var(--accent);
+  animation:magiaSpin .8s linear infinite
+}
+.loading-text{font-size:11px;letter-spacing:.03em}
+@keyframes magiaSpin{to{transform:rotate(360deg)}}
+
 .source-card{
   border:1px solid var(--line);background:#fff;border-radius:12px;padding:7px 5px;text-align:center;
   user-select:none;cursor:grab;min-width:0;transition:.12s;touch-action:none
@@ -226,9 +244,13 @@ button{cursor:pointer}
         <label>名前（名前に該当するプロパティ）</label>
         <input id="propName" value="名前">
       </div>
-      <div class="field optional">
+      <div class="field optional" id="propImageField">
         <label>画像（画像に該当するプロパティ）</label>
         <input id="propImage" value="画像">
+      </div>
+      <div class="field optional">
+        <label>favicon元URL（URLに該当するプロパティ・任意）</label>
+        <input id="propFaviconUrl" placeholder="サイトURL">
       </div>
 <div class="field optional">
         <label>文字色（文字色に該当するプロパティ・任意）</label>
@@ -237,7 +259,7 @@ button{cursor:pointer}
     </div>
 
     <div class="header-actions">
-            <button class="btn primary" id="loadBtn">読込</button>
+            <button class="btn primary" id="loadBtn">読込 / 更新</button>
     </div>
   </header>
 </div>
@@ -247,6 +269,12 @@ button{cursor:pointer}
       <div class="library-head">
         <div class="library-title">アイコン</div>
         <div class="library-count" id="libraryCount">0件</div>
+      </div>
+      <div class="library-loading" id="libraryLoading">
+        <div class="loading-inner">
+          <div class="loading-spinner" aria-hidden="true"></div>
+          <div class="loading-text">キャラクターを読み込み中…</div>
+        </div>
       </div>
       <div class="icon-list" id="iconList">
         <div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>
@@ -282,8 +310,8 @@ button{cursor:pointer}
           </div>
 
           <div class="group">
-            <label class="check"><input id="useFavicon" type="checkbox"> 画像がないときfaviconを使う</label>
-            <p class="small">OFFなら画像プロパティまたはNotionページアイコンだけを使います。</p>
+            <label class="check"><input id="useFavicon" type="checkbox"> faviconでアイコンを作る</label>
+            <p class="small">チェックすると「画像」プロパティ欄は自動で無効になり、「favicon元URL」プロパティのサイトURLからfaviconを使います。チェックを外すと画像プロパティ欄が再び使えます。</p>
           </div>
 
           <div class="group">
@@ -370,6 +398,10 @@ button{cursor:pointer}
       <p class="help" style="margin-bottom:0">公開者側でWorker URLをHTMLへ埋め込んでおけば、利用者が入力するのはNotion APIキーとデータベースURL/IDだけです。</p>
     </div>
 
+    <h3>読み込みデータの保存</h3>
+    <p class="help">Notionから一度読み込んだ名前・ページURL・文字色・整列番号などは、このブラウザに自動保存します。次回は前回データを自動表示するので、毎回APIを読む必要はありません。「読込 / 更新」を押したときだけ最新のNotionデータを取り直します。</p>
+    <p class="help">Notionの画像URLは期限切れする場合があります。画像だけ表示されなくなった場合は「読込 / 更新」で最新URLを取り直してください。</p>
+
     <h3>保存について</h3>
     <ul class="help">
       <li>APIキーは「保存する」を選んだ場合のみ、このブラウザの Local Storage に保存できます。</li>
@@ -381,6 +413,9 @@ button{cursor:pointer}
     <h3>Chromeでの確認場所</h3>
     <p class="help"><code>開発者ツール → Application → Local Storage → このサイトのURL</code></p>
     <p class="help">テンプレ画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
+
+    <h3>faviconでアイコンを作る</h3>
+    <p class="help">「favicon元URL（URLに該当するプロパティ・任意）」に、各キャラクターに対応するWebサイトURLが入ったNotionプロパティ名を指定します。右側の「faviconでアイコンを作る」をONにすると、画像プロパティもNotionページアイコンもないキャラだけ、そのURLのfaviconを使います。</p>
 
     <h3>文字色プロパティについて</h3>
     <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
@@ -404,6 +439,7 @@ button{cursor:pointer}
       </div>
     </div>
     <button class="btn" id="clearTokenBtn">保存したAPIキーを削除</button>
+    <button class="btn" id="clearLoadedCacheBtn" type="button">保存した読み込みデータを削除</button>
   </div>
 </div>
 
@@ -431,6 +467,7 @@ const WORKER_URL = "https://cold-shadow-63ca.sarscoc.workers.dev";
 const $=s=>document.querySelector(s);
 const SETTINGS='magiaMatrix.redesign.settings.v1';
 const STATE='magiaMatrix.redesign.state.v1';
+const CACHE='magiaMatrix.notion.cache.v1';
 let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
@@ -447,7 +484,12 @@ function safeColor(v){
   if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
   return '#'+hex.toUpperCase();
 }
-function favicon(url){try{return new URL('/favicon.ico',url).href}catch{return ''}}
+function favicon(url){
+  try{
+    const u=new URL(url);
+    return `${u.origin}/favicon.ico`;
+  }catch{return ''}
+}
 
 function propText(p){
   if(!p)return '';
@@ -492,21 +534,69 @@ function normalize(page,cfg){
   const P=page.properties||{};
   const name=propText(P[cfg.propName])||'名称未設定';
   const url=page.url||'';
+  const faviconUrl=cfg.propFaviconUrl ? propText(P[cfg.propFaviconUrl]) : '';
   const baseImage=propImage(P[cfg.propImage])||pageIcon(page)||'';
   const color=safeColor(propText(P[cfg.propColor]));
   const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
-  return {id:page.id,name,url,baseImage,color,order};
+  return {id:page.id,name,url,faviconUrl,baseImage,color,order};
 }
 
 function displayImage(it){
   const d=appState().display||{};
+  if(it.baseImage) return it.baseImage;
+  if(d.useFavicon && it.faviconUrl) return favicon(it.faviconUrl);
+  return '';
+};
   return it.baseImage || (d.useFavicon ? favicon(it.url) : '');
 }
+
+function saveLoadedCache(){
+  const payload={
+    savedAt:Date.now(),
+    items:items.map(it=>({
+      id:it.id,
+      name:it.name,
+      url:it.url||'',
+      faviconUrl:it.faviconUrl||'',
+      baseImage:it.baseImage||it.image||'',
+      color:it.color||null,
+      order:it.order??null
+    }))
+  };
+  saveJSON(CACHE,payload);
+}
+function restoreLoadedCache(){
+  const c=loadJSON(CACHE,null);
+  if(!c?.items?.length)return false;
+  const s=appState();s.items||={};
+  items=c.items.map(it=>{
+    if(!s.items[it.id])s.items[it.id]={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    return {...it,local:s.items[it.id]};
+  });
+  saveState(s);
+  renderLibrary();
+  renderPlaced();
+  if($('#connectionStatus')){
+    const d=new Date(c.savedAt);
+    $('#connectionStatus').textContent=`前回データ ${items.length}件`;
+    $('#connectionStatus').title=`保存日時: ${d.toLocaleString()}`;
+  }
+  return true;
+}
+function clearLoadedCache(){
+  localStorage.removeItem(CACHE);
+  items=[];
+  renderLibrary();
+  renderPlaced();
+  if($('#connectionStatus'))$('#connectionStatus').textContent='保存データなし';
+}
+
 function saveSettings(saveToken=false){
   const s={
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
-    propImage:$('#propImage').value.trim(),
+    propImage:($('#useFavicon')?.checked ? '' : $('#propImage').value.trim()),
+    propFaviconUrl:$('#propFaviconUrl').value.trim(),
     propColor:$('#propColor').value.trim(),
     propOrder:$('#propOrder')?$('#propOrder').value.trim():'',
     saveApiToken:!!saveToken,
@@ -527,12 +617,22 @@ function clearToken(){
   $('#apiToken').value='';
 }
 
+
+function setLibraryLoading(on){
+  const loading=$('#libraryLoading'), list=$('#iconList');
+  if(!loading||!list)return;
+  loading.classList.toggle('active',!!on);
+  list.style.display=on?'none':'grid';
+}
+
 async function loadNotion(){
+  setLibraryLoading(true);
+  $('#connectionStatus').textContent='読み込み中…';
   saveSettings(false);
   const cfg=loadJSON(SETTINGS,{});
   const token=$('#apiToken').value.trim();
-  if(!cfg.notionSource||!token){alert('Notion API・データベースURL/IDを入力してください。');return}
-  if(WORKER_URL.includes('REPLACE-WITH-YOUR-WORKER')){alert('公開者側でWorker URLがまだ設定されていません。');return}
+  if(!cfg.notionSource||!token){setLibraryLoading(false);alert('Notion API・データベースURL/IDを入力してください。');return}
+  if(WORKER_URL.includes('REPLACE-WITH-YOUR-WORKER')){setLibraryLoading(false);alert('公開者側でWorker URLがまだ設定されていません。');return}
   try{
     const r=await fetch(WORKER_URL.replace(/\/$/,'')+'/notion/read',{
       method:'POST',
@@ -557,9 +657,12 @@ async function loadNotion(){
         return an-bn;
       });
     }
-    saveState(s);renderLibrary();renderPlaced();
+    saveState(s);saveLoadedCache();renderLibrary();renderPlaced();
     $('#connectionStatus').textContent=items.length+'件 読込済み';
+    setLibraryLoading(false);
   }catch(e){
+    setLibraryLoading(false);
+    $('#connectionStatus').textContent='読込エラー';
     alert('Notionの読み込みに失敗しました：'+e.message);
   }
 }
@@ -775,6 +878,24 @@ function setupHeaderToggle(){
   };
 }
 
+
+function syncImageFieldWithFavicon(){
+  const on=$('#useFavicon')?.checked;
+  const input=$('#propImage');
+  const field=$('#propImageField');
+  if(!input)return;
+  input.disabled=!!on;
+  field?.classList.toggle('disabled',!!on);
+  if(on){
+    input.dataset.prevValue=input.value;
+    input.value='';
+    input.placeholder='favicon使用中';
+  }else{
+    if(!input.value && input.dataset.prevValue) input.value=input.dataset.prevValue;
+    input.placeholder='';
+  }
+}
+
 /* display settings */
 function restoreDisplay(){
   const d=appState().display||{};
@@ -833,6 +954,7 @@ $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 
 
 $('#clearTokenBtn').onclick=clearToken;
+$('#clearLoadedCacheBtn').onclick=clearLoadedCache;
 $('#closeDrawer').onclick=()=>$('#drawer').classList.remove('open');
 $('#saveItemBtn').onclick=saveItem;
 $('#cropBtn').onclick=openCrop;
@@ -841,6 +963,9 @@ $('#cropSave').onclick=saveCrop;
 $('#clearTemplateBtn').onclick=async()=>{await tplSet('');showTemplate('')};
 
 restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();setupTemplateDrop();setupCrop();
+syncImageFieldWithFavicon();
+$('#useFavicon').addEventListener('change',syncImageFieldWithFavicon);
+restoreLoadedCache();
 tplGet().then(showTemplate);
 </script>
 </body>
