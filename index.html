@@ -22,8 +22,10 @@ button{cursor:pointer}
 .header-mini-left{display:flex;align-items:center;gap:8px}
 .header-toggle{height:24px;border:1px solid #dfe3e6;background:#fff;border-radius:6px;padding:0 8px;font-size:10px;color:#596168}
 .header{
-  min-height:0;background:transparent;border-top:1px solid #f0f1f2;display:flex;align-items:center;gap:10px;
-  padding:7px 10px;overflow:hidden;max-height:96px;opacity:1;transition:max-height .18s ease,opacity .15s ease,padding .18s ease
+  min-height:48px;background:transparent;border-top:1px solid #f0f1f2;
+  display:flex;align-items:center;gap:8px;padding:6px 8px;overflow-x:auto;overflow-y:hidden;
+  max-height:72px;opacity:1;transition:max-height .18s ease,opacity .15s ease,padding .18s ease;
+  white-space:nowrap
 }
 .header-wrap.collapsed .header{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-top:0}
 
@@ -32,18 +34,18 @@ button{cursor:pointer}
   color:#353b40;white-space:nowrap;margin-right:2px
 }
 .connect-grid{
-  display:grid;grid-template-columns:minmax(150px,.95fr) minmax(240px,1.55fr) minmax(165px,.9fr) minmax(165px,.9fr) minmax(200px,1fr);
-  gap:6px;align-items:center;flex:1;min-width:0
+  display:flex;align-items:flex-end;gap:6px;flex:1;min-width:max-content;white-space:nowrap
 }
-.field{min-width:0}
-.field label{
-  display:block;font-size:9px;line-height:1;color:#8b9298;margin:0 0 3px;
-  letter-spacing:.02em
-}
+.field{min-width:0;flex:0 0 auto}
+.field.api{width:205px}
+.field.db{width:250px}
+.field.prop{width:155px}
+.field.prop-wide{width:190px}
+.field.favicon-toggle{width:auto;align-self:center;padding-top:12px}
+.field label{display:block;font-size:8.5px;line-height:1;color:#8b9298;margin:0 0 3px;letter-spacing:.01em}
 .field input{
-  width:100%;height:30px;border:1px solid #dde1e4;border-radius:7px;padding:5px 8px;
-  background:#fafbfb;min-width:0;font-size:11px;color:#30353a;outline:none;
-  transition:border-color .12s,background .12s,box-shadow .12s
+  width:100%;height:27px;border:1px solid #dde1e4;border-radius:6px;padding:4px 7px;
+  background:#fafbfb;min-width:0;font-size:10.5px;color:#30353a;outline:none
 }
 .api-input-row{display:flex;gap:5px;align-items:center}
 .api-input-row input{flex:1}
@@ -71,7 +73,7 @@ button{cursor:pointer}
 .status{font-size:10px;color:var(--muted);white-space:nowrap}
 
 /* main layout */
-.workspace{display:grid;grid-template-columns:var(--sidebar) 7px 1fr;flex:1;min-height:0;overflow:hidden}
+.workspace{display:grid;grid-template-columns:300px 12px minmax(0,1fr);flex:1;min-height:0;overflow:hidden}
 .library{
   background:#fff;border-right:1px solid var(--line);padding:12px;min-height:0;height:100%;
   display:flex;flex-direction:column;overflow:hidden
@@ -83,9 +85,15 @@ button{cursor:pointer}
   overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:9px;padding:2px 2px 18px;
   align-content:start
 }
-.splitter{cursor:col-resize;background:transparent;position:relative;z-index:12}
-.splitter::after{content:"";position:absolute;top:0;bottom:0;left:2px;width:3px;background:#d7dce0;border-radius:3px;transition:.15s}
-.splitter:hover::after,.splitter.dragging::after{background:var(--accent);width:4px;left:1px}
+.splitter{
+  cursor:col-resize;background:#f0f2f3;position:relative;z-index:20;
+  touch-action:none;border-left:1px solid #e0e3e5;border-right:1px solid #e0e3e5
+}
+.splitter::after{
+  content:"⋮";position:absolute;inset:0;display:grid;place-items:center;
+  color:#8a949b;font-size:16px;line-height:1
+}
+.splitter:hover,.splitter.dragging{background:#dcecf6}
 
 .library-loading{
   flex:1;min-height:180px;display:none;place-items:center;text-align:center;color:#7b838a
@@ -138,6 +146,17 @@ button{cursor:pointer}
 
 .drag-ghost{position:fixed;z-index:1000;pointer-events:none;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;overflow:hidden;background:#eee;border:3px solid #fff;box-shadow:0 7px 22px rgba(0,0,0,.22);opacity:.94}
 .drag-ghost img{width:100%;height:100%;object-fit:cover;display:block}
+
+
+.log-button{width:100%;margin-top:6px}
+.log-list{max-height:280px;overflow:auto;border:1px solid #e5e7e9;border-radius:8px;background:#fafbfb}
+.log-row{padding:7px 8px;border-bottom:1px solid #eceeef;font-size:10px;line-height:1.45}
+.log-row:last-child{border-bottom:0}
+.log-time{color:#8b9298;font-size:9px}
+.log-empty{padding:14px;text-align:center;color:#969da3;font-size:10px}
+.favicon-check{display:flex;align-items:center;gap:5px;font-size:10px;color:#454c52;cursor:pointer}
+.favicon-check input{width:auto;height:auto}
+.template-meta{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(255,255,255,.88);border:1px solid #e0e3e5;border-radius:7px;padding:4px 7px;font-size:9px;color:#737b82;pointer-events:none}
 
 /* placed items */
 .placed{
@@ -207,9 +226,9 @@ button{cursor:pointer}
 @media(max-width:760px){
   .header{min-height:auto;align-items:flex-start;flex-wrap:wrap;padding:8px}
   .brand{font-size:11px;padding-top:6px}
-  .connect-grid{grid-template-columns:1fr 1fr;width:100%;gap:5px}
+  .connect-grid{display:flex;width:max-content;gap:5px}
   .workspace{grid-template-columns:1fr}
-  .splitter{display:none}
+  .splitter{display:block}
   .library{max-height:220px;border-right:0;border-bottom:1px solid var(--line)}
   .icon-list{grid-template-columns:repeat(5,1fr)}
   .stage{height:72vh;min-height:520px;grid-template-columns:1fr 150px}
@@ -228,38 +247,55 @@ button{cursor:pointer}
   </div>
   <header class="header">
     <div class="connect-grid">
-      <div class="field">
+      <div class="field api">
         <label>Notion APIキー</label>
         <div class="api-input-row">
-          <input id="apiToken" type="password" autocomplete="off" placeholder="secret_..." style="flex:1">
-          <button class="btn icon" id="saveApiBtn" type="button" title="APIキーをこの端末に保存" aria-label="APIキーを保存">💾</button>
-          <button class="btn icon" id="apiHelpBtn" type="button" title="APIキーについて" aria-label="APIキーの説明">?</button>
+          <input id="apiToken" type="password" autocomplete="off" placeholder="secret_...">
+          <button class="btn icon" id="saveApiBtn" type="button" title="APIキーを保存">💾</button>
+          <button class="btn icon" id="apiHelpBtn" type="button" title="APIキーについて">?</button>
         </div>
       </div>
-      <div class="field">
+
+      <div class="field db">
         <label>データベースURL / ID</label>
         <input id="notionSource" placeholder="Notion URL または ID">
       </div>
-      <div class="field optional">
-        <label>名前（名前に該当するプロパティ）</label>
+
+      <div class="field prop">
+        <label>名前（該当プロパティ）</label>
         <input id="propName" value="名前">
       </div>
-      <div class="field optional" id="propImageField">
-        <label>画像（画像に該当するプロパティ）</label>
+
+      <div class="field prop" id="propImageField">
+        <label>画像（該当プロパティ）</label>
         <input id="propImage" value="画像">
       </div>
-      <div class="field optional">
-        <label>favicon元URL（URLに該当するプロパティ・任意）</label>
+
+      <div class="field favicon-toggle">
+        <label class="favicon-check">
+          <input id="useFavicon" type="checkbox">
+          faviconでアイコンを作る
+        </label>
+      </div>
+
+      <div class="field prop-wide" id="faviconUrlField">
+        <label>favicon元URL（該当プロパティ）</label>
         <input id="propFaviconUrl" placeholder="サイトURL">
       </div>
-<div class="field optional">
-        <label>文字色（文字色に該当するプロパティ・任意）</label>
+
+      <div class="field prop-wide">
+        <label>文字色（該当プロパティ・任意）</label>
         <input id="propColor" placeholder="文字色">
       </div>
-    </div>
 
-    <div class="header-actions">
-            <button class="btn primary" id="loadBtn">読込 / 更新</button>
+      <div class="field prop">
+        <label>整列（数字のみ・任意）</label>
+        <input id="propOrder" inputmode="numeric" placeholder="並び順">
+      </div>
+
+      <div class="header-actions">
+        <button class="btn primary" id="loadBtn">読込 / 更新</button>
+      </div>
     </div>
   </header>
 </div>
@@ -293,6 +329,7 @@ button{cursor:pointer}
             </div>
           </div>
           <div class="canvas-guide">テンプレ画像の上にアイコンを配置</div>
+          <div class="template-meta" id="templateMeta">テンプレ未読込</div>
         </div>
 
         <aside class="settings">
@@ -307,11 +344,6 @@ button{cursor:pointer}
           <div class="group">
             <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
             <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
-          </div>
-
-          <div class="group">
-            <label class="check"><input id="useFavicon" type="checkbox"> faviconでアイコンを作る</label>
-            <p class="small">チェックすると「画像」プロパティ欄は自動で無効になり、「favicon元URL」プロパティのサイトURLからfaviconを使います。チェックを外すと画像プロパティ欄が再び使えます。</p>
           </div>
 
           <div class="group">
@@ -335,6 +367,7 @@ button{cursor:pointer}
 
           <div class="group">
             <button class="btn" id="clearTemplateBtn" style="width:100%">テンプレ削除</button>
+            <button class="btn log-button" id="openLogBtn" type="button">配置ログを見る</button>
           </div>
 
           <p class="small">アイコンをクリックすると、個別コメント・切り抜き・個別色を編集できます。</p>
@@ -443,6 +476,22 @@ button{cursor:pointer}
   </div>
 </div>
 
+
+<div class="modal" id="logModal">
+  <div class="modalbox" style="width:min(620px,100%)">
+    <div class="drawer-head">
+      <strong>配置ログ</strong>
+      <button class="iconbtn" id="logClose">×</button>
+    </div>
+    <p class="help">現在のテンプレに対する、アイコン中心点・台詞（コメント）・操作時刻の履歴です。</p>
+    <div class="log-list" id="logList"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" id="clearLogBtn" type="button" style="flex:1">このテンプレのログを削除</button>
+      <button class="btn primary" id="logDoneBtn" type="button" style="flex:1">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="cropModal">
   <div class="modalbox" style="width:min(520px,100%)">
     <strong>アイコン切り抜き</strong>
@@ -535,7 +584,7 @@ function normalize(page,cfg){
   const name=propText(P[cfg.propName])||'名称未設定';
   const url=page.url||'';
   const faviconUrl=cfg.propFaviconUrl ? propText(P[cfg.propFaviconUrl]) : '';
-  const baseImage=propImage(P[cfg.propImage])||pageIcon(page)||'';
+  const baseImage=cfg.useFavicon ? '' : (propImage(P[cfg.propImage])||pageIcon(page)||'');
   const color=safeColor(propText(P[cfg.propColor]));
   const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
   return {id:page.id,name,url,faviconUrl,baseImage,color,order};
@@ -543,11 +592,10 @@ function normalize(page,cfg){
 
 function displayImage(it){
   const d=appState().display||{};
-  if(it.baseImage) return it.baseImage;
-  if(d.useFavicon && it.faviconUrl) return favicon(it.faviconUrl);
-  return '';
-};
-  return it.baseImage || (d.useFavicon ? favicon(it.url) : '');
+  if(d.useFavicon){
+    return it.faviconUrl ? favicon(it.faviconUrl) : '';
+  }
+  return it.baseImage || '';
 }
 
 function saveLoadedCache(){
@@ -592,13 +640,15 @@ function clearLoadedCache(){
 }
 
 function saveSettings(saveToken=false){
+  const useFavicon=$('#useFavicon').checked;
   const s={
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
-    propImage:($('#useFavicon')?.checked ? '' : $('#propImage').value.trim()),
+    propImage:useFavicon ? '' : $('#propImage').value.trim(),
+    useFavicon,
     propFaviconUrl:$('#propFaviconUrl').value.trim(),
     propColor:$('#propColor').value.trim(),
-    propOrder:$('#propOrder')?$('#propOrder').value.trim():'',
+    propOrder:$('#propOrder').value.trim(),
     saveApiToken:!!saveToken,
     apiToken:saveToken?$('#apiToken').value:''
   };
@@ -606,9 +656,10 @@ function saveSettings(saveToken=false){
 }
 function restoreSettings(){
   const s=loadJSON(SETTINGS,{});
-  for(const k of ['notionSource','propName','propImage','propColor']){
+  for(const k of ['notionSource','propName','propImage','propFaviconUrl','propColor','propOrder']){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
+  if(typeof s.useFavicon==='boolean')$('#useFavicon').checked=s.useFavicon;
   if(s.saveApiToken&&s.apiToken)$('#apiToken').value=s.apiToken;
 }
 function clearToken(){
@@ -630,6 +681,7 @@ async function loadNotion(){
   $('#connectionStatus').textContent='読み込み中…';
   saveSettings(false);
   const cfg=loadJSON(SETTINGS,{});
+  cfg.useFavicon=!!cfg.useFavicon;
   const token=$('#apiToken').value.trim();
   if(!cfg.notionSource||!token){setLibraryLoading(false);alert('Notion API・データベースURL/IDを入力してください。');return}
   if(WORKER_URL.includes('REPLACE-WITH-YOUR-WORKER')){setLibraryLoading(false);alert('公開者側でWorker URLがまだ設定されていません。');return}
@@ -667,36 +719,143 @@ async function loadNotion(){
   }
 }
 
-/* template in IndexedDB */
-function idb(){return new Promise((ok,no)=>{const r=indexedDB.open('magiaMatrixDB',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('templates'))r.result.createObjectStore('templates')};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
-async function tplGet(){const db=await idb();return new Promise((ok,no)=>{const r=db.transaction('templates').objectStore('templates').get('main');r.onsuccess=()=>ok(r.result||'');r.onerror=()=>no(r.error)})}
-async function tplSet(v){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction('templates','readwrite');t.objectStore('templates').put(v,'main');t.oncomplete=ok;t.onerror=()=>no(t.error)})}
-function showTemplate(v){
-  const c=$('#canvas'),im=$('#templateImg');
-  if(v){im.src=v;c.classList.add('has-template')}
-  else{im.removeAttribute('src');c.classList.remove('has-template')}
+/* template + placement log */
+const TEMPLATE_CURRENT='magiaMatrix.currentTemplate.v1';
+const TEMPLATE_LOGS='magiaMatrix.templateLogs.v1';
+
+function idb(){
+  return new Promise((ok,no)=>{
+    const r=indexedDB.open('magiaMatrixDB',2);
+    r.onupgradeneeded=()=>{
+      const db=r.result;
+      if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates');
+    };
+    r.onsuccess=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function tplGetRecord(id){
+  if(!id)return null;
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const r=db.transaction('templates').objectStore('templates').get(id);
+    r.onsuccess=()=>ok(r.result||null);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function tplSetRecord(id,record){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const t=db.transaction('templates','readwrite');
+    t.objectStore('templates').put(record,id);
+    t.oncomplete=ok;
+    t.onerror=()=>no(t.error);
+  });
+}
+async function hashText(text){
+  if(crypto?.subtle){
+    const b=new TextEncoder().encode(text);
+    const h=await crypto.subtle.digest('SHA-256',b);
+    return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,20);
+  }
+  let h=0;
+  for(let i=0;i<text.length;i++)h=((h<<5)-h)+text.charCodeAt(i)|0;
+  return 'tpl-'+Math.abs(h);
+}
+function currentTemplateId(){
+  return localStorage.getItem(TEMPLATE_CURRENT)||'';
+}
+function templateLogs(){
+  return loadJSON(TEMPLATE_LOGS,{});
+}
+function setTemplateLogs(v){
+  saveJSON(TEMPLATE_LOGS,v);
+}
+function appendPlacementLog(itemId,action='move'){
+  const tid=currentTemplateId();
+  if(!tid)return;
+  const s=appState();
+  const pos=s.items?.[itemId];
+  const it=items.find(x=>x.id===itemId);
+  if(!pos||!it)return;
+  const all=templateLogs();
+  all[tid] ||= [];
+  all[tid].push({
+    at:Date.now(),
+    action,
+    itemId,
+    name:it.name,
+    x:Number((pos.x??0).toFixed(3)),
+    y:Number((pos.y??0).toFixed(3)),
+    comment:pos.comment||''
+  });
+  if(all[tid].length>1000)all[tid]=all[tid].slice(-1000);
+  setTemplateLogs(all);
+}
+function renderLog(){
+  const box=$('#logList');
+  const tid=currentTemplateId();
+  const logs=(templateLogs()[tid]||[]).slice().reverse();
+  if(!tid){box.innerHTML='<div class="log-empty">テンプレが読み込まれていません。</div>';return}
+  if(!logs.length){box.innerHTML='<div class="log-empty">まだ配置ログがありません。</div>';return}
+  box.innerHTML='';
+  logs.forEach(row=>{
+    const d=document.createElement('div');d.className='log-row';
+    const action=row.action==='comment'?'台詞更新':row.action==='place'?'配置':'移動';
+    d.innerHTML=`<strong>${escapeHtml(row.name||'')}</strong>　${action}<br>
+      中心点: x=${row.x}% / y=${row.y}%<br>
+      ${row.comment?`台詞: ${escapeHtml(row.comment)}<br>`:''}
+      <span class="log-time">${new Date(row.at).toLocaleString()}</span>`;
+    box.appendChild(d);
+  });
+}
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showTemplateRecord(rec){
+  const c=$('#canvas'),im=$('#templateImg'),meta=$('#templateMeta');
+  if(rec?.dataUrl){
+    im.src=rec.dataUrl;
+    c.classList.add('has-template');
+    meta.textContent=rec.name||'保存済みテンプレ';
+  }else{
+    im.removeAttribute('src');
+    c.classList.remove('has-template');
+    meta.textContent='テンプレ未読込';
+  }
+}
+async function restoreTemplate(){
+  const id=currentTemplateId();
+  const rec=await tplGetRecord(id);
+  showTemplateRecord(rec);
+}
+async function saveTemplateFile(file){
+  const dataUrl=await new Promise((ok,no)=>{
+    const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(r.error);r.readAsDataURL(file);
+  });
+  const id=await hashText(dataUrl);
+  const rec={id,name:file.name||'template',dataUrl,uploadedAt:Date.now()};
+  await tplSetRecord(id,rec);
+  localStorage.setItem(TEMPLATE_CURRENT,id);
+  showTemplateRecord(rec);
+  return id;
+}
+async function clearCurrentTemplate(){
+  localStorage.removeItem(TEMPLATE_CURRENT);
+  showTemplateRecord(null);
 }
 function setupTemplateDrop(){
   const c=$('#canvas');
   ['dragenter','dragover'].forEach(t=>c.addEventListener(t,e=>{
-    if(e.dataTransfer?.types?.includes('application/x-magia-item'))return;
-    e.preventDefault();$('#templateDrop').classList.add('dragover')
+    e.preventDefault();
+    $('#templateDrop').classList.add('dragover');
   }));
   ['dragleave','drop'].forEach(t=>c.addEventListener(t,e=>$('#templateDrop').classList.remove('dragover')));
-  c.addEventListener('drop',e=>{
-    const itemId=e.dataTransfer?.getData('application/x-magia-item');
-    if(itemId){
-      e.preventDefault();
-      const r=c.getBoundingClientRect();
-      placeItem(itemId,(e.clientX-r.left)/r.width*100,(e.clientY-r.top)/r.height*100);
-      return;
-    }
+  c.addEventListener('drop',async e=>{
     const f=[...(e.dataTransfer?.files||[])].find(x=>x.type.startsWith('image/'));
     if(!f)return;
     e.preventDefault();
-    const rd=new FileReader();
-    rd.onload=async()=>{await tplSet(rd.result);showTemplate(rd.result)};
-    rd.readAsDataURL(f);
+    await saveTemplateFile(f);
   });
 }
 
@@ -755,6 +914,7 @@ function placeItem(id,x,y){
   });
   const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
   renderPlaced();
+  appendPlacementLog(id,'place');
 }
 function cropStyle(img,c){
   c=c||{x:0,y:0,zoom:1};
@@ -790,6 +950,7 @@ function startPlacedDrag(e,id,el){
     el.releasePointerCapture?.(ev.pointerId);
     mutate(s=>{s.items[id].x=parseFloat(el.style.left);s.items[id].y=parseFloat(el.style.top)});
     const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
+    appendPlacementLog(id,'move');
     el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);
     setTimeout(()=>drag=null,0);
   };
@@ -810,7 +971,7 @@ function saveItem(){
     l.comment=$('#commentInput').value;l.color=$('#itemColor').value;l.useColor=$('#useItemColor').checked;
   });
   const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
-  renderPlaced();$('#drawer').classList.remove('open');
+  renderPlaced();appendPlacementLog(selectedId,'comment');$('#drawer').classList.remove('open');
 }
 
 /* crop */
@@ -837,10 +998,13 @@ function saveCrop(){
 
 
 /* left/right resizable panes */
+function applyPaneWidth(px){
+  const ws=$('#workspace');
+  const width=Math.max(180,Math.min(720,Number(px)||300));
+  ws.style.gridTemplateColumns=`${width}px 12px minmax(0,1fr)`;
+}
 function restorePaneWidth(){
-  const s=appState();
-  const w=Math.max(180,Math.min(600,s.libraryWidth||300));
-  document.documentElement.style.setProperty('--sidebar',w+'px');
+  applyPaneWidth(appState().libraryWidth||300);
 }
 function setupSplitter(){
   const splitter=$('#splitter');
@@ -848,20 +1012,22 @@ function setupSplitter(){
   const move=e=>{
     if(!active)return;
     const ws=$('#workspace').getBoundingClientRect();
-    const x=Math.max(180,Math.min(600,e.clientX-ws.left));
-    document.documentElement.style.setProperty('--sidebar',x+'px');
+    applyPaneWidth(e.clientX-ws.left);
   };
   const end=()=>{
     if(!active)return;
-    active=false;splitter.classList.remove('dragging');
-    const val=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar'));
-    mutate(s=>s.libraryWidth=val);
+    active=false;
+    splitter.classList.remove('dragging');
+    const cols=getComputedStyle($('#workspace')).gridTemplateColumns.split(' ');
+    const width=parseFloat(cols[0])||300;
+    mutate(s=>s.libraryWidth=width);
     window.removeEventListener('pointermove',move);
     window.removeEventListener('pointerup',end);
   };
   splitter.addEventListener('pointerdown',e=>{
-    active=true;splitter.classList.add('dragging');
-    splitter.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+    active=true;
+    splitter.classList.add('dragging');
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',end);
   });
@@ -880,20 +1046,32 @@ function setupHeaderToggle(){
 
 
 function syncImageFieldWithFavicon(){
-  const on=$('#useFavicon')?.checked;
-  const input=$('#propImage');
-  const field=$('#propImageField');
-  if(!input)return;
-  input.disabled=!!on;
-  field?.classList.toggle('disabled',!!on);
+  const on=$('#useFavicon').checked;
+  const img=$('#propImage');
+  const imgField=$('#propImageField');
+  const fav=$('#propFaviconUrl');
+  const favField=$('#faviconUrlField');
+  img.disabled=on;
+  imgField.classList.toggle('disabled',on);
+  fav.disabled=!on;
+  favField.classList.toggle('disabled',!on);
   if(on){
-    input.dataset.prevValue=input.value;
-    input.value='';
-    input.placeholder='favicon使用中';
+    img.dataset.prevValue=img.value;
+    img.value='';
+    img.placeholder='favicon使用中';
   }else{
-    if(!input.value && input.dataset.prevValue) input.value=input.dataset.prevValue;
-    input.placeholder='';
+    if(!img.value&&img.dataset.prevValue)img.value=img.dataset.prevValue;
+    img.placeholder='';
   }
+}
+
+
+function syncFaviconDisplayState(){
+  mutate(s=>{s.display=s.display||{};s.display.useFavicon=$('#useFavicon').checked});
+  syncImageFieldWithFavicon();
+  saveSettings(false);
+  renderLibrary();
+  renderPlaced();
 }
 
 /* display settings */
@@ -901,18 +1079,18 @@ function restoreDisplay(){
   const d=appState().display||{};
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
-  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;$('#useFavicon').checked=!!d.useFavicon;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
   const update=()=>{
     mutate(s=>s.display={
       iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,useFavicon:$('#useFavicon').checked,fontFamily:$('#fontFamily').value
+      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,fontFamily:$('#fontFamily').value
     });
     $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
   };
-  ['iconSize','showName','showComment','globalTextColor','useNotionColor','useFavicon','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+  ['iconSize','showName','showComment','globalTextColor','useNotionColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
 $('#loadBtn').onclick=loadNotion;
@@ -960,13 +1138,26 @@ $('#saveItemBtn').onclick=saveItem;
 $('#cropBtn').onclick=openCrop;
 $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
-$('#clearTemplateBtn').onclick=async()=>{await tplSet('');showTemplate('')};
+$('#clearTemplateBtn').onclick=clearCurrentTemplate;
+$('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 
-restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();setupTemplateDrop();setupCrop();
+$('#openLogBtn').onclick=()=>{renderLog();$('#logModal').classList.add('open')};
+$('#logClose').onclick=$('#logDoneBtn').onclick=()=>$('#logModal').classList.remove('open');
+$('#clearLogBtn').onclick=()=>{
+  const tid=currentTemplateId();
+  if(!tid)return;
+  const all=templateLogs();
+  delete all[tid];
+  setTemplateLogs(all);
+  renderLog();
+};
+
+
+restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();syncImageFieldWithFavicon();setupTemplateDrop();setupCrop();
 syncImageFieldWithFavicon();
-$('#useFavicon').addEventListener('change',syncImageFieldWithFavicon);
+
 restoreLoadedCache();
-tplGet().then(showTemplate);
+restoreTemplate();
 </script>
 </body>
 </html>
