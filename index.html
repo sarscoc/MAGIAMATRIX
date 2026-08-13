@@ -1037,6 +1037,51 @@ button{cursor:pointer}
   margin:0 !important;
 }
 
+
+/* --- final header collapse behavior --- */
+.header-wrap{
+  box-sizing:border-box !important;
+}
+.header-wrap.collapsed{
+  height:30px !important;
+  min-height:30px !important;
+  max-height:30px !important;
+  flex:0 0 30px !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  background:#fff !important;
+  border-bottom:1px solid #e7e9eb !important;
+}
+.header-wrap.collapsed .header-mini{
+  height:30px !important;
+  min-height:30px !important;
+  max-height:30px !important;
+  padding:0 8px !important;
+  margin:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  position:relative !important;
+  z-index:2 !important;
+  background:#fff !important;
+}
+.header-wrap.collapsed .header{
+  display:none !important;
+  height:0 !important;
+  min-height:0 !important;
+  max-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:0 !important;
+  opacity:0 !important;
+  visibility:hidden !important;
+}
+.header-wrap.collapsed + .workspace{
+  margin-top:0 !important;
+}
+
 </style>
 </head>
 <body>
@@ -2149,14 +2194,12 @@ function setupHeaderToggle(){
   const wrap=$('#headerWrap');
   const btn=$('#headerToggle');
   if(!wrap||!btn)return;
-
   const apply=closed=>{
     wrap.classList.toggle('collapsed',closed);
     btn.textContent=closed?'接続設定を開く':'接続設定を閉じる';
-    localStorage.setItem('magiaMatrix.header.collapsed.v3',closed?'1':'0');
+    localStorage.setItem('magiaMatrix.header.collapsed.v4',closed?'1':'0');
   };
-
-  apply(localStorage.getItem('magiaMatrix.header.collapsed.v3')==='1');
+  apply(localStorage.getItem('magiaMatrix.header.collapsed.v4')==='1');
   btn.onclick=()=>apply(!wrap.classList.contains('collapsed'));
 }
 
