@@ -1,0 +1,2593 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Magia Matrix</title>
+<style>
+:root{
+  --bg:#f5f6f7;--panel:#fff;--ink:#202327;--muted:#70777e;--line:#d9dde1;
+  --accent:#84b5d3;--soft:#edf5fa;--shadow:0 10px 30px rgba(25,35,45,.09);
+  --sidebar:300px;--settings:190px;--icon-size:72px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* header */
+.header-wrap{
+  width:100%;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
+  border-bottom:1px solid #e7e9eb;z-index:30;
+  transition:width .18s ease,border-radius .18s ease
+}
+
+
+
+
+.header-mini{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
+.header-mini-left{display:flex;align-items:center;gap:8px}
+.header-toggle{height:24px;border:1px solid #dfe3e6;background:#fff;border-radius:6px;padding:0 8px;font-size:10px;color:#596168}
+.header{
+  min-height:48px;background:transparent;border-top:1px solid #f0f1f2;
+  display:flex;align-items:center;gap:8px;padding:6px 8px;overflow-x:auto;overflow-y:hidden;
+  max-height:72px;opacity:1;transition:max-height .18s ease,opacity .15s ease,padding .18s ease;
+  white-space:nowrap
+}
+.header-wrap.collapsed .header{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-top:0}
+
+.brand{
+  font-weight:780;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  color:#353b40;white-space:nowrap;margin-right:2px
+}
+.connect-grid{
+  display:flex;align-items:flex-end;gap:6px;flex:1;min-width:max-content;white-space:nowrap
+}
+.field{min-width:0;flex:0 0 auto}
+.field.api{width:205px}
+.field.db{width:250px}
+.field.prop{width:155px}
+.field.prop-wide{width:190px}
+.field.favicon-toggle{width:auto;align-self:center;padding-top:12px}
+.field label{display:block;font-size:8.5px;line-height:1;color:#8b9298;margin:0 0 3px;letter-spacing:.01em}
+.field input{
+  width:100%;height:27px;border:1px solid #dde1e4;border-radius:6px;padding:4px 7px;
+  background:#fafbfb;min-width:0;font-size:10.5px;color:#30353a;outline:none
+}
+.api-input-row{display:flex;gap:5px;align-items:center}
+.api-input-row input{flex:1}
+.api-input-row .btn.icon{flex:0 0 30px}
+.field input:disabled{
+  background:#f1f2f3;color:#9aa0a5;cursor:not-allowed;border-color:#e3e5e7
+}
+.field.disabled label{color:#a4a9ae}
+.field input:focus{
+  border-color:#a9c7da;background:#fff;box-shadow:0 0 0 3px rgba(132,181,211,.12)
+}
+.header-actions{display:flex;gap:5px;align-items:center}
+.btn{
+  height:30px;border:1px solid #dce0e3;background:#fff;border-radius:7px;padding:0 9px;
+  white-space:nowrap;font-size:11px;color:#394047
+}
+.btn:hover{background:#f7f8f8}
+.btn.primary{
+  background:#252a2e;color:#fff;border-color:#252a2e;font-weight:700;padding:0 12px
+}
+.btn.primary:hover{background:#15191c}
+.btn.icon{
+  width:30px;padding:0;font-weight:750;border-radius:50%;font-size:12px;color:#68717a
+}
+.status{font-size:10px;color:var(--muted);white-space:nowrap}
+
+/* main layout */
+.workspace{display:grid;grid-template-columns:300px 12px minmax(0,1fr);flex:1;min-height:0;overflow:hidden}
+.library{
+  background:#fff;border-right:1px solid var(--line);padding:12px;min-height:0;height:100%;
+  display:flex;flex-direction:column;overflow:hidden
+}
+.library-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.library-title{font-size:13px;font-weight:800}
+.library-count{font-size:11px;color:var(--muted)}
+.icon-list{
+  overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:9px;padding:2px 2px 18px;
+  align-content:start
+}
+.splitter{
+  cursor:col-resize;background:#f0f2f3;position:relative;z-index:20;
+  touch-action:none;border-left:1px solid #e0e3e5;border-right:1px solid #e0e3e5
+}
+.splitter::after{
+  content:"⋮";position:absolute;inset:0;display:grid;place-items:center;
+  color:#8a949b;font-size:16px;line-height:1
+}
+.splitter:hover,.splitter.dragging{background:#dcecf6}
+
+
+.template-tabs-wrap{
+  border-bottom:1px solid #e7e9eb;padding:6px 7px;background:#fbfcfc;flex:0 0 auto
+}
+.template-tabs-label{
+  font-size:8px;color:#92999f;margin-bottom:4px
+}
+.template-tabs{
+  display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin
+}
+.template-tab{
+  flex:0 0 auto;display:flex;align-items:center;gap:5px;max-width:150px;
+  border:1px solid #dfe3e6;background:#fff;border-radius:7px;padding:4px 6px;
+  cursor:pointer;font-size:9px;color:#50575d;transition:.12s
+}
+.template-tab:hover{background:#f4f8fa}
+.template-tab.active{border-color:var(--accent);background:var(--soft);font-weight:700}
+.template-tab-thumb{
+  width:24px;height:18px;object-fit:cover;border-radius:3px;border:1px solid #e1e4e6;flex:0 0 auto
+}
+.template-tab-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px}
+.template-tab-empty{font-size:9px;color:#a0a6ab;padding:4px 2px}
+
+.library-loading{
+  flex:1;min-height:180px;display:none;place-items:center;text-align:center;color:#7b838a
+}
+.library-loading.active{display:grid}
+.loading-inner{display:flex;flex-direction:column;align-items:center;gap:10px}
+.loading-spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid #e2e7ea;border-top-color:var(--accent);
+  animation:magiaSpin .8s linear infinite
+}
+.loading-text{font-size:11px;letter-spacing:.03em}
+@keyframes magiaSpin{to{transform:rotate(360deg)}}
+
+.source-card{
+  border:1px solid var(--line);background:#fff;border-radius:12px;padding:7px 5px;text-align:center;
+  user-select:none;cursor:grab;min-width:0;transition:.12s;touch-action:none
+}
+.source-card:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(0,0,0,.07)}
+.source-card:active{cursor:grabbing}
+.source-avatar{
+  width:58px;height:58px;border-radius:13px;overflow:hidden;background:#eee;margin:auto;border:1px solid #e3e5e7
+}
+.source-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.source-name{font-size:11px;font-weight:700;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.stage-shell{padding:10px;min-width:0;min-height:0;height:100%;overflow:hidden}
+.stage{position:relative;
+  height:100%;min-height:0;background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow);display:grid;grid-template-columns:1fr var(--settings);overflow:hidden;position:relative
+}
+.canvas{
+  position:relative;min-width:0;background:#fafafa;overflow:hidden
+}
+.template-drop{
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#9aa1a7;font-size:14px;
+  border:2px dashed transparent
+}
+.template-drop.dragover{border-color:var(--accent);background:var(--soft)}
+.template-img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;pointer-events:none
+}
+.canvas.has-template .template-img{display:block}
+.canvas.has-template .template-drop{display:none}
+.canvas-guide{
+  position:absolute;left:14px;bottom:12px;font-size:11px;color:#888;background:rgba(255,255,255,.85);
+  border:1px solid #e2e4e6;border-radius:999px;padding:5px 9px;pointer-events:none
+}
+
+
+.drag-ghost{position:fixed;z-index:1000;pointer-events:none;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;overflow:hidden;background:#eee;border:3px solid #fff;box-shadow:0 7px 22px rgba(0,0,0,.22);opacity:.94}
+.drag-ghost img{width:100%;height:100%;object-fit:cover;display:block}
+
+
+.log-button{width:100%;margin-top:6px}
+.log-list{max-height:280px;overflow:auto;border:1px solid #e5e7e9;border-radius:8px;background:#fafbfb}
+.log-row{padding:7px 8px;border-bottom:1px solid #eceeef;font-size:10px;line-height:1.45}
+.log-row:last-child{border-bottom:0}
+.log-time{color:#8b9298;font-size:9px}
+.log-empty{padding:14px;text-align:center;color:#969da3;font-size:10px}
+.favicon-check{display:flex;align-items:center;gap:5px;font-size:10px;color:#454c52;cursor:pointer}
+.favicon-check input{width:auto;height:auto}
+.template-meta{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(255,255,255,.88);border:1px solid #e0e3e5;border-radius:7px;padding:4px 7px;font-size:9px;color:#737b82;pointer-events:none}
+
+
+.text-outline{
+  text-shadow:
+    -2px -2px 0 #fff,
+    -1px -2px 0 #fff,
+     0   -2px 0 #fff,
+     1px -2px 0 #fff,
+     2px -2px 0 #fff,
+    -2px -1px 0 #fff,
+     2px -1px 0 #fff,
+    -2px  0   0 #fff,
+     2px  0   0 #fff,
+    -2px  1px 0 #fff,
+     2px  1px 0 #fff,
+    -2px  2px 0 #fff,
+    -1px  2px 0 #fff,
+     0    2px 0 #fff,
+     1px  2px 0 #fff,
+     2px  2px 0 #fff;
+}
+
+/* placed items */
+.placed{
+  position:absolute;transform:translate(-50%,-50%);z-index:6;text-align:center;touch-action:none;user-select:none;
+  width:calc(var(--icon-size) + 70px)
+}
+.placed-avatar{
+  width:var(--icon-size);height:var(--icon-size);border-radius:50%;overflow:hidden;margin:auto;background:#eee;
+  border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.20)
+}
+.placed-avatar img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
+.placed-name{margin-top:5px;font-weight:800;font-size:13px;line-height:1.2;text-shadow:0 1px 2px #fff}
+.placed-comment{
+  position:absolute;
+  width:max-content;
+  max-width:180px;
+  padding:4px 7px;
+  border-radius:7px;
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(210,214,218,.9);
+  box-shadow:0 2px 7px rgba(20,30,40,.08);
+  line-height:1.35;
+  white-space:pre-wrap;
+  text-align:center;
+  pointer-events:none;
+  z-index:5
+}
+.placed-comment.comment-top{
+  left:50%;
+  bottom:calc(100% + 7px);
+  transform:translateX(-50%);
+}
+.placed-comment.comment-top::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:100%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-top-color:rgba(255,255,255,.88);
+}
+.placed-comment.comment-side{
+  left:calc(100% + 8px);
+  top:50%;
+  transform:translateY(-50%);
+}
+.placed-comment.comment-side::after{
+  content:"";
+  position:absolute;
+  right:100%;
+  top:50%;
+  transform:translateY(-50%);
+  border:5px solid transparent;
+  border-right-color:rgba(255,255,255,.88);
+}
+.placed.selected .placed-avatar{outline:3px solid var(--accent)}
+
+
+.placed-avatar.mode-original{
+  border-radius:0;overflow:visible;background:transparent;border:0;box-shadow:none
+}
+.placed-avatar.mode-original img{object-fit:contain}
+.placed-avatar.mode-circle{border-radius:50%;overflow:hidden}
+.placed-avatar.mode-square{border-radius:0;overflow:hidden}
+
+.source-avatar.mode-original{border-radius:0;overflow:visible;background:transparent}
+.source-avatar.mode-original img{object-fit:contain}
+.source-avatar.mode-circle{border-radius:50%;overflow:hidden}
+.source-avatar.mode-square{border-radius:0;overflow:hidden}
+
+.drag-ghost.mode-original{border-radius:0;overflow:visible;background:transparent;border:0;box-shadow:none}
+.drag-ghost.mode-original img{object-fit:contain}
+.drag-ghost.mode-circle{border-radius:50%;overflow:hidden}
+.drag-ghost.mode-square{border-radius:0;overflow:hidden}
+
+.preview.mode-original{border-radius:0;overflow:visible;background:transparent}
+.preview.mode-original img{object-fit:contain}
+.preview.mode-circle{border-radius:50%;overflow:hidden}
+.preview.mode-square{border-radius:0;overflow:hidden}
+
+.crop-circle.mode-square{border-radius:0}
+
+/* settings rail inside image area */
+.settings{overflow-y:auto;min-height:0;
+  border-left:1px solid var(--line);background:rgba(255,255,255,.96);padding:12px;overflow:auto;z-index:10
+}
+.settings h3{font-size:12px;margin:0 0 12px}
+.settings .group{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #eceeef}
+.settings label{display:block;font-size:11px;color:#606870;margin:8px 0 4px}
+.settings input[type=range]{width:100%}
+.settings select,.settings input[type=color]{
+  width:100%;border:1px solid var(--line);border-radius:8px;height:34px;background:#fff
+}
+.check{display:flex!important;align-items:center;gap:7px;color:#333!important}
+.check input{width:auto}
+
+.small{font-size:10px;color:var(--muted);line-height:1.45}
+.value{font-size:11px;color:#555}
+
+
+.icon-editor-panel{
+  margin-top:10px;padding-top:10px;border-top:1px solid #e4e7e9
+}
+.icon-editor-panel .section-title{
+  font-size:11px;font-weight:800;color:#343b41;margin-bottom:8px
+}
+.icon-editor-panel .drawer-head{
+  position:static;padding:0 0 7px;border:0;background:transparent
+}
+.icon-editor-panel .preview{margin:2px auto 7px}
+.icon-editor-panel textarea{
+  width:100%;min-height:68px;border:1px solid var(--line);border-radius:8px;
+  padding:7px;resize:vertical;font-size:10px
+}
+.icon-editor-panel input[type=color]{width:100%;height:32px;border:1px solid var(--line);border-radius:7px}
+.icon-editor-panel label{display:block;font-size:10px;color:#666;margin:8px 0 3px}
+.icon-editor-panel .check{display:flex;align-items:center;gap:5px}
+
+/* drawer */
+.drawer{
+  position:fixed;right:0;top:0;width:min(390px,100vw);height:100vh;background:#fff;z-index:50;
+  box-shadow:-12px 0 35px rgba(0,0,0,.11);transform:translateX(102%);transition:.2s;padding:18px;overflow:auto
+}
+.drawer.open{transform:none}
+.drawer-head{display:flex;justify-content:space-between;align-items:center}
+.iconbtn{border:0;background:transparent;font-size:24px}
+.preview{width:110px;height:110px;border-radius:50%;overflow:hidden;background:#eee;margin:14px auto}
+.preview img{width:100%;height:100%;object-fit:cover;transform-origin:center}
+.drawer label{display:block;font-size:12px;color:#666;margin:10px 0 4px}
+.drawer textarea{width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:9px;resize:vertical}
+.drawer input[type=color]{width:100%;height:38px;border:1px solid var(--line);border-radius:8px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;z-index:60;padding:18px}
+.modal.open{display:grid}
+.modalbox{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:18px}
+.notice{background:#f3f7f9;border:1px solid #d9e3e8;border-radius:12px;padding:11px;font-size:12px;line-height:1.55}
+.notice ul{padding-left:18px}
+.help{font-size:12px;line-height:1.6;color:#666}
+.crop-stage{height:350px;background:#222;border-radius:14px;overflow:hidden;position:relative;display:grid;place-items:center}
+.crop-stage img{width:220px;height:220px;object-fit:cover;position:absolute;left:50%;top:50%;transform-origin:center}
+.crop-circle{width:220px;height:220px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 999px rgba(0,0,0,.38);z-index:2;pointer-events:none}
+
+@media(max-width:1100px){
+  :root{--sidebar:250px;--settings:170px}
+  .connect-grid{grid-template-columns:1fr 1fr 1.2fr repeat(2,110px)}
+  .field.optional{display:none}
+}
+@media(max-width:760px){
+  .header{min-height:auto;align-items:flex-start;flex-wrap:wrap;padding:8px}
+  .brand{font-size:11px;padding-top:6px}
+  .connect-grid{display:flex;width:max-content;gap:5px}
+  
+  .splitter{display:block}
+  .library{max-height:220px;border-right:0;border-bottom:1px solid var(--line)}
+  .icon-list{grid-template-columns:repeat(5,1fr)}
+  .stage{position:relative;height:72vh;min-height:520px;grid-template-columns:minmax(0,1fr)}
+}
+
+.settings{
+  overflow-y:auto;min-height:0;
+  width:220px;min-width:220px;
+  background:rgba(255,255,255,.97);
+  border-left:1px solid #e6eaed;
+  padding:7px;
+  scrollbar-width:thin;
+}
+.settings h3{display:none}
+.settings .group{
+  margin:0;
+  padding:6px;
+  border:1px solid #e8ebed;
+  border-radius:8px;
+  background:#fbfcfc;
+}
+.settings .group label{
+  display:block;
+  font-size:8.5px;
+  color:#737b82;
+  margin:0 0 3px;
+}
+.settings select,
+.settings input[type="color"],
+.settings textarea{
+  font-size:9.5px;
+  border-radius:6px;
+}
+.settings input[type="range"]{width:100%}
+.settings .check{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-size:8.5px;
+  margin:2px 0;
+}
+.settings .small,.settings .help{
+  font-size:8px;
+  line-height:1.3;
+}
+.settings .btn{
+  min-height:27px;
+  padding:4px 7px;
+  font-size:8.5px;
+  border-radius:6px;
+}
+.display-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:2px 1px 6px;
+}
+.display-head-title{
+  font-size:10.5px;
+  font-weight:800;
+  color:#30383e;
+}
+.display-toggle{
+  width:25px;height:25px;
+  display:grid;place-items:center;
+  border:1px solid #dde2e5;
+  background:#fff;
+  border-radius:7px;
+  cursor:pointer;
+  color:#687178;
+  font-size:11px;
+}
+.display-settings-body{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+}
+.display-settings-body .group.wide{grid-column:1/-1}
+
+
+.icon-editor-panel{
+  margin-top:7px!important;
+  padding-top:7px!important;
+  border-top:1px solid #e4e7e9!important;
+}
+.icon-editor-panel .section-title{
+  font-size:9.5px!important;
+  margin-bottom:5px!important;
+}
+.icon-editor-panel .preview{
+  width:46px;height:46px;margin:2px auto 5px;
+}
+.icon-editor-panel textarea{min-height:52px}
+
+
+#cropStage img{
+  user-select:none;
+  -webkit-user-drag:none;
+  cursor:grab;
+  touch-action:none;
+}
+#cropStage.dragging img{cursor:grabbing}
+
+
+.header-wrap{
+  width:100% !important;
+  max-width:none !important;
+  border-right:0 !important;
+  border-radius:0 !important;
+  transition:none !important;
+}
+
+
+
+
+.header-wrap .header{
+  overflow:hidden;
+  max-height:72px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:
+    max-height .22s ease,
+    opacity .16s ease,
+    padding-top .22s ease,
+    padding-bottom .22s ease,
+    border-width .22s ease;
+}
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border-top-width:0 !important;
+  pointer-events:none;
+}
+
+
+.library-page-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  padding:6px 7px;
+  border-bottom:1px solid #e7e9eb;
+  background:#fbfcfc;
+  flex:0 0 auto;
+}
+.library-page-tab{
+  height:28px;
+  border:1px solid #dfe3e6;
+  background:#fff;
+  border-radius:7px;
+  font-size:9.5px;
+  color:#626a71;
+  cursor:pointer;
+  font-weight:700;
+}
+.library-page-tab.active{
+  background:var(--soft);
+  border-color:var(--accent);
+  color:#34424b;
+}
+.library-page{display:none;min-height:0;flex:1;overflow:hidden}
+.library-page.active{display:flex;flex-direction:column}
+.past-template-grid{
+  padding:8px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:8px;
+  overflow:auto;
+  align-content:start;
+}
+.past-template-grid .template-tab{
+  width:100%;
+  max-width:none;
+  display:block;
+  padding:6px;
+  text-align:left;
+}
+.past-template-grid .template-tab-thumb{
+  width:100%;
+  height:76px;
+  display:block;
+  object-fit:cover;
+  margin-bottom:5px;
+  border-radius:5px;
+}
+.past-template-grid .template-tab-name{
+  display:block;
+  max-width:none;
+  font-size:9px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+
+.settings{
+  position:absolute !important;
+  top:12px;
+  right:12px;
+  width:240px !important;
+  min-width:240px !important;
+  max-height:calc(100% - 24px);
+  overflow-y:auto;
+  z-index:25;
+  border:1px solid rgba(214,220,224,.95) !important;
+  border-radius:14px !important;
+  background:rgba(255,255,255,.95) !important;
+  box-shadow:0 14px 34px rgba(25,35,45,.14),0 3px 10px rgba(25,35,45,.08);
+  backdrop-filter:blur(14px);
+  padding:8px !important;
+  transform-origin:top right;
+  transition:opacity .16s ease,transform .16s ease,visibility .16s ease;
+}
+.settings.floating-closed{
+  opacity:0;
+  transform:translateY(-6px) scale(.98);
+  visibility:hidden;
+  pointer-events:none;
+}
+.settings-menu-btn{
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:26;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(214,220,224,.95);
+  border-radius:10px;
+  background:rgba(255,255,255,.95);
+  box-shadow:0 8px 22px rgba(25,35,45,.12);
+  backdrop-filter:blur(12px);
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  color:#4d565d;
+  transition:.15s ease;
+}
+.settings-menu-btn:hover{transform:translateY(-1px);background:#fff}
+.settings:not(.floating-closed) + .settings-menu-btn{
+  opacity:0;
+  pointer-events:none;
+}
+.settings-close-btn{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border:1px solid #dfe3e6;
+  border-radius:7px;
+  background:#fff;
+  cursor:pointer;
+  font-size:13px;
+  color:#667078;
+}
+.display-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);
+  padding-bottom:6px;
+}
+
+
+.header-wrap{
+  position:relative;
+  width:100% !important;
+  overflow:visible;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap .header-mini{
+  height:30px;
+  min-height:30px;
+  transition:height .22s ease,min-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border:0 !important;
+  pointer-events:none;
+}
+
+
+
+
+.header-wrap{
+  position:relative;
+  width:100% !important;
+  overflow:visible;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap .header-mini{
+  height:30px;
+  min-height:30px;
+  transition:height .22s ease,min-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border:0 !important;
+  pointer-events:none;
+}
+
+
+
+
+.stage{
+  grid-template-columns:minmax(0,1fr) !important;
+}
+.canvas{
+  grid-column:1 !important;
+  width:100%;
+  min-width:0;
+}
+.settings,
+.settings-menu-btn{
+  grid-column:auto !important;
+  grid-row:auto !important;
+}
+.settings-menu-btn{
+  right:10px !important;
+  top:10px !important;
+  margin:0 !important;
+  max-width:calc(100% - 20px);
+}
+.settings{
+  right:10px !important;
+  top:10px !important;
+  max-width:calc(100% - 20px) !important;
+}
+
+
+.workspace{
+  display:grid !important;
+  grid-template-columns:300px 12px minmax(0,1fr) !important;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+.library{
+  grid-column:1 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+.splitter{
+  grid-column:2 !important;
+  display:block !important;
+  width:12px !important;
+  min-width:12px !important;
+  cursor:col-resize !important;
+  background:#eef1f3;
+  border-left:1px solid #dde2e5;
+  border-right:1px solid #dde2e5;
+  position:relative;
+  z-index:20;
+  touch-action:none;
+}
+.splitter::after{
+  content:"⋮";
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:#8b949b;
+  font-size:15px;
+}
+.stage{
+  grid-column:3 !important;
+  display:block !important;
+  position:relative !important;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+.canvas{
+  position:relative;
+  width:100% !important;
+  height:100% !important;
+  min-width:0;
+  min-height:0;
+}
+
+/* Left tabs: exactly one page visible at a time */
+.library-page-tabs{
+  display:grid !important;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  padding:6px 7px;
+  flex:0 0 auto;
+  border-bottom:1px solid #e7e9eb;
+  background:#fbfcfc;
+}
+.library-page{
+  display:none !important;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+.library-page.active{
+  display:flex !important;
+  flex-direction:column;
+}
+#iconsPage .icon-list{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+}
+#templatesPage .past-template-grid{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+}
+
+/* Floating settings stay inside template area only */
+.settings-menu-btn{
+  position:absolute !important;
+  top:10px !important;
+  right:10px !important;
+  z-index:30 !important;
+}
+.settings{
+  position:absolute !important;
+  top:10px !important;
+  right:10px !important;
+  z-index:29 !important;
+  max-width:calc(100% - 20px) !important;
+}
+
+
+.workspace{
+  display:grid !important;
+  grid-template-columns:300px 12px minmax(0,1fr) !important;
+  flex:1 !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+.library{
+  grid-column:1 !important;
+  padding:0 !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  height:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+  border-right:0 !important;
+  background:#fff;
+}
+.splitter{
+  grid-column:2 !important;
+}
+.stage-shell{
+  grid-column:3 !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+  padding:10px !important;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.stage-area-label{
+  flex:0 0 auto;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  color:#697178;
+  padding:0 3px;
+}
+.stage{
+  flex:1 !important;
+  min-height:0 !important;
+  width:100% !important;
+}
+.library-page-tabs{
+  flex:0 0 auto !important;
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:5px !important;
+  padding:7px !important;
+  border-bottom:1px solid #e7e9eb !important;
+  background:#fff !important;
+}
+.library-page-tab{
+  height:30px !important;
+}
+.library-page{
+  display:none !important;
+  flex:1 !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+.library-page.active{
+  display:flex !important;
+  flex-direction:column !important;
+}
+.library-page-meta{
+  flex:0 0 auto;
+  min-height:28px;
+  padding:6px 9px 4px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:9px;
+  font-weight:700;
+  color:#7b838a;
+}
+#iconsPage .icon-list{
+  flex:1 !important;
+  min-height:0 !important;
+  overflow:auto !important;
+  padding:5px 7px 18px !important;
+}
+#templatesPage .past-template-grid{
+  flex:1 !important;
+  min-height:0 !important;
+  overflow:auto !important;
+  padding:7px !important;
+}
+
+
+.splitter{
+  cursor:col-resize !important;
+  touch-action:none !important;
+  user-select:none !important;
+}
+.splitter:hover,
+.splitter.dragging{
+  background:#dcecf6 !important;
+}
+
+
+.placed-avatar.use-text-border,
+.source-avatar.use-text-border{
+  border:2px solid var(--icon-border-color,currentColor) !important;
+  box-sizing:border-box;
+}
+.placed-avatar.mode-original.use-text-border{
+  border-radius:8px !important;
+}
+
+
+.header-wrap:not(.collapsed){
+  flex:0 0 auto !important;
+  display:block !important;
+}
+.header-wrap:not(.collapsed) .header-mini,
+.header-wrap:not(.collapsed) .header{
+  display:flex !important;
+  visibility:visible !important;
+}
+
+
+.header-wrap{
+  width:100% !important;
+  flex:0 0 auto !important;
+  overflow:visible !important;
+}
+.header-wrap .header-mini{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 8px !important;
+  pointer-events:auto !important;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  overflow:hidden;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease,border-width .22s ease;
+}
+
+
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border-top-width:0 !important;
+  pointer-events:none !important;
+}
+
+
+
+.header-wrap{
+  width:100% !important;
+  flex:0 0 auto !important;
+  overflow:visible !important;
+}
+.header-wrap .header-mini{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 8px !important;
+  pointer-events:auto !important;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  overflow:hidden;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease,border-width .22s ease;
+}
+.header-wrap.collapsed{
+  height:auto !important;
+  min-height:30px !important;
+  border-bottom:1px solid #e7e9eb !important;
+  overflow:visible !important;
+}
+.header-wrap.collapsed .header-mini{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 8px !important;
+  pointer-events:auto !important;
+}
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border-top-width:0 !important;
+  pointer-events:none !important;
+}
+.header-wrap.collapsed .header-toggle{
+  position:static !important;
+  top:auto !important;
+  right:auto !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+  height:auto !important;
+  margin:0 !important;
+}
+
+
+/* --- final header collapse behavior --- */
+.header-wrap{
+  box-sizing:border-box !important;
+}
+.header-wrap.collapsed{
+  height:30px !important;
+  min-height:30px !important;
+  max-height:30px !important;
+  flex:0 0 30px !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  background:#fff !important;
+  border-bottom:1px solid #e7e9eb !important;
+}
+.header-wrap.collapsed .header-mini{
+  height:30px !important;
+  min-height:30px !important;
+  max-height:30px !important;
+  padding:0 8px !important;
+  margin:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  position:relative !important;
+  z-index:2 !important;
+  background:#fff !important;
+}
+.header-wrap.collapsed .header{
+  display:none !important;
+  height:0 !important;
+  min-height:0 !important;
+  max-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:0 !important;
+  opacity:0 !important;
+  visibility:hidden !important;
+}
+.header-wrap.collapsed + .workspace{
+  margin-top:0 !important;
+}
+
+
+/* 接続設定 開く/閉じるボタンは常に同じ見た目 */
+.header-toggle,
+.header-wrap.collapsed .header-toggle,
+.header-wrap:not(.collapsed) .header-toggle{
+  position:static !important;
+  width:auto !important;
+  min-width:96px !important;
+  height:24px !important;
+  min-height:24px !important;
+  padding:0 9px !important;
+  margin:0 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:1px solid #dfe3e6 !important;
+  border-radius:7px !important;
+  background:#fff !important;
+  color:#596168 !important;
+  font-size:9px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  pointer-events:auto !important;
+  transform:none !important;
+  white-space:nowrap !important;
+  cursor:pointer !important;
+}
+.header-toggle:hover,
+.header-wrap.collapsed .header-toggle:hover,
+.header-wrap:not(.collapsed) .header-toggle:hover{
+  background:#f4f7f8 !important;
+}
+
+
+.stage-area-toolbar{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:30px;
+}
+.new-template-btn{
+  height:28px;
+  padding:0 10px !important;
+  font-size:9px !important;
+  border-radius:7px !important;
+  white-space:nowrap;
+}
+
+
+.past-template-grid .template-card{
+  position:relative;
+  min-width:0;
+}
+.past-template-grid .template-card.active .template-tab{
+  border-color:var(--accent);
+  background:var(--soft);
+}
+.past-template-grid .template-tab{
+  padding-bottom:28px !important;
+}
+.template-delete-btn{
+  position:absolute;
+  left:6px;
+  right:6px;
+  bottom:6px;
+  height:20px;
+  border:1px solid #e2e5e7;
+  border-radius:5px;
+  background:rgba(255,255,255,.94);
+  color:#8a5555;
+  font-size:8px;
+  cursor:pointer;
+}
+.template-delete-btn:hover{
+  background:#fff4f4;
+  border-color:#e5caca;
+}
+
+
+.template-empty-thumb{
+  display:grid !important;
+  place-items:center;
+  background:#f3f5f6;
+  color:#9ba2a7;
+  font-size:8px;
+  letter-spacing:.08em;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header-wrap" id="headerWrap">
+  <div class="header-mini">
+    <div class="header-mini-left">
+      <div class="brand">MAGIA MATRIX</div>
+      <span class="status" id="connectionStatus">Notion接続</span>
+    </div>
+    <button class="header-toggle" id="headerToggle">接続設定を閉じる ▲</button>
+  </div>
+  <header class="header">
+    <div class="connect-grid">
+      <div class="field api">
+        <label>Notion APIキー</label>
+        <div class="api-input-row">
+          <input id="apiToken" type="password" autocomplete="off" placeholder="secret_...">
+          <button class="btn icon" id="saveApiBtn" type="button" title="APIキーを保存">💾</button>
+          <button class="btn icon" id="apiHelpBtn" type="button" title="APIキーについて">?</button>
+        </div>
+      </div>
+
+      <div class="field db">
+        <label>データベースURL / ID</label>
+        <input id="notionSource" placeholder="Notion URL または ID">
+      </div>
+
+      <div class="field prop">
+        <label>名前（該当プロパティ）</label>
+        <input id="propName" value="名前">
+      </div>
+
+      <div class="field prop" id="propImageField">
+        <label>画像（該当プロパティ）</label>
+        <input id="propImage" value="画像">
+      </div>
+
+      <div class="field favicon-toggle">
+        <label class="favicon-check">
+          <input id="useFavicon" type="checkbox">
+          faviconでアイコンを作る
+        </label>
+      </div>
+
+      <div class="field prop-wide">
+        <label>文字色（該当プロパティ・任意）</label>
+        <input id="propColor" placeholder="文字色">
+      </div>
+
+      <div class="field prop">
+        <label>整列（数字のみ・任意）</label>
+        <input id="propOrder" inputmode="numeric" placeholder="並び順">
+      </div>
+
+      <div class="header-actions">
+        <button class="btn primary" id="loadBtn">読込 / 更新</button>
+      </div>
+    </div>
+  </header>
+</div>
+
+  <div class="workspace" id="workspace">
+    <aside class="library" id="libraryPane">
+      <div class="library-page-tabs">
+        <button class="library-page-tab active" id="showIconsTab" type="button">アイコン</button>
+        <button class="library-page-tab" id="showTemplatesTab" type="button">過去テンプレ</button>
+      </div>
+
+      <section class="library-page active" id="iconsPage">
+        <div class="library-page-meta">
+          <span>アイコン</span>
+          <span class="library-count" id="libraryCount">0件</span>
+        </div>
+
+        <div class="library-loading" id="libraryLoading">
+          <div class="loading-inner">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <div class="loading-text">キャラクターを読み込み中…</div>
+          </div>
+        </div>
+
+        <div class="icon-list" id="iconList">
+          <div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>
+        </div>
+      </section>
+
+      <section class="library-page" id="templatesPage">
+        <div class="library-page-meta">
+          <span>過去テンプレ</span>
+        </div>
+        <div class="past-template-grid" id="templateTabs">
+          <div class="template-tab-empty">まだありません</div>
+        </div>
+      </section>
+    </aside>
+    <div class="splitter" id="splitter" title="ドラッグして幅を変更"></div>
+
+    <section class="stage-shell">
+      <div class="stage-area-toolbar">
+        <div class="stage-area-label">テンプレ操作</div>
+        <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
+      </div>
+      <div class="stage">
+        <div class="canvas" id="canvas">
+          <img class="template-img" id="templateImg" alt="">
+          <div class="template-drop" id="templateDrop">
+            <div>
+              <strong>テンプレ画像をここへドロップ</strong><br>
+              <span class="small">画像・アイコン配置・補足をテンプレごとに保存します</span>
+            </div>
+          </div>
+          <div class="template-meta" id="templateMeta">テンプレ未読込</div>
+        </div>
+
+        <aside class="settings" id="settings"> 
+          <div class="display-head">
+            <div class="display-head-title">表示設定</div>
+            <button class="settings-close-btn" id="displaySettingsToggle" type="button" title="閉じる">×</button>
+          </div>
+          <div class="display-settings-body" id="displaySettingsBody">
+
+<div class="group">
+            <label>アイコン表示</label>
+            <select id="iconShape">
+              <option value="original">そのまま表示</option>
+              <option value="circle">丸に切り抜き</option>
+              <option value="square">四角に切り抜き</option>
+            </select>
+          </div>
+
+          <div class="group wide">
+            <label>アイコンの大きさ</label>
+            <input id="iconSize" type="range" min="36" max="140" step="2" value="72">
+            <div class="value"><span id="iconSizeValue">72</span> px</div>
+          </div>
+
+          <div class="group">
+            <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
+            <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
+          </div>
+
+          <div class="group wide">
+            <label>文字色</label>
+            <input id="globalTextColor" type="color" value="#202327">
+            <label class="check"><input id="useNotionColor" type="checkbox" checked> Notionの文字色があれば優先</label>
+            <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
+          </div>
+          <div class="group wide">
+            <label>補足文字サイズ <span id="commentFontSizeValue">10</span>px</label>
+            <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
+          </div>
+          <div class="group">
+            <label>補足の位置</label>
+            <select id="commentPosition">
+              <option value="top">上</option>
+              <option value="side">横</option>
+            </select>
+          </div>
+          <div class="group">
+            <label>白縁取り</label>
+            <select id="textOutline">
+              <option value="off">なし</option>
+              <option value="on">あり</option>
+            </select>
+          </div>
+
+          <div class="group">
+            <label>フォント</label>
+            <select id="fontFamily">
+              <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
+              <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
+              <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
+              <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
+              <option value="'Hiragino Mincho ProN',serif">ヒラギノ明朝</option>
+              <option value="Georgia,'Times New Roman',serif">Serif</option>
+              <option value="'Courier New',monospace">Monospace</option>
+            </select>
+          </div>
+
+
+          
+          </div>
+
+<div class="group icon-editor-panel" id="iconEditorPanel">
+            <div class="section-title">アイコン編集</div>
+            <div id="iconEditorEmpty" class="help">テンプレ上のアイコンを選ぶと、ここで編集できます。</div>
+            <div id="iconEditorContent" style="display:none">
+
+  <div class="drawer-head">
+    <strong>アイコン編集</strong>
+  </div>
+  <div class="preview"><img id="detailImg"></div>
+  <div id="detailName" style="text-align:center;font-weight:800"></div>
+
+  <label>コメント</label>
+  <textarea id="commentInput" placeholder="サイト上だけのコメント"></textarea>
+              <p class="small">補足はテンプレ上でアイコンの上に表示されます。</p>
+
+  <label>個別文字色</label>
+  <input type="color" id="itemColor" value="#202327">
+  <label class="check"><input id="useItemColor" type="checkbox"> このアイコンだけ個別色を使う</label>
+
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="btn" id="cropBtn" style="flex:1">切り抜き</button>
+    <button class="btn primary" id="saveItemBtn" style="flex:1">保存</button>
+  </div>
+
+            </div>
+          </div>
+
+          <div class="group">
+            <button class="btn" id="clearTemplateBtn" style="width:100%">このテンプレを削除</button>
+          </div>
+
+          
+        </aside>
+        <button class="settings-menu-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="helpModal">
+  <div class="modalbox">
+    <div class="drawer-head">
+      <strong>APIキーについて</strong>
+      <button class="iconbtn" id="helpClose">×</button>
+    </div>
+
+    <p class="help">ここにはNotionのAPIキーを入力します。APIキーはNotionのデータを読むための認証情報です。</p>
+
+    <div class="notice" style="margin-top:10px">
+      <strong>APIキーの取得方法について</strong>
+      <p class="help" style="margin-bottom:0">APIキーの発行・取得・権限設定の方法は、各サービスの公式案内を確認してご自身で設定してください。このページではAPIキーの作り方・取得方法は案内しません。</p>
+    </div>
+
+    <h3>接続について</h3>
+    <p class="help">利用者はWorker URLを入力する必要はありません。中継先は公開者がこのHTML内に一度だけ設定します。利用者が入力するのはNotion APIキーとデータベースURL/IDです。</p>
+
+    <h3>Cloudflare「Workers & Pages」について</h3>
+    <p class="help">これは、Notionとこのページの間をつなぐ小さな中継処理（Worker）を公開するために使います。利用者が毎回設定するものではなく、<strong>このサイトの公開者が最初に1回だけ作ります。</strong></p>
+    <ol class="help">
+      <li>Cloudflareにログインします。</li>
+      <li>ダッシュボードの <strong>Workers &amp; Pages</strong> を開きます。</li>
+      <li><strong>Create application</strong> を選びます。</li>
+      <li><strong>Create Worker</strong> を選び、Workerを作成して <strong>Deploy</strong> します。</li>
+      <li>作成したWorkerのコード編集画面で、このセットに入っている <code>worker.js</code> の内容へ置き換えて、もう一度Deployします。</li>
+      <li><code>https://xxxxx.workers.dev</code> のようなURLが発行されます。</li>
+      <li>そのURLを <code>index.html</code> 内の <code>WORKER_URL</code> に1回だけ設定します。</li>
+    </ol>
+    <div class="notice">
+      <strong>利用者はWorkers &amp; Pagesを触りません</strong>
+      <p class="help" style="margin-bottom:0">公開者側でWorker URLをHTMLへ埋め込んでおけば、利用者が入力するのはNotion APIキーとデータベースURL/IDだけです。</p>
+    </div>
+
+    <h3>読み込みデータの保存</h3>
+    <p class="help">Notionから一度読み込んだ名前・ページURL・文字色・整列番号などは、このブラウザに自動保存します。次回は前回データを自動表示するので、毎回APIを読む必要はありません。「読込 / 更新」を押したときだけ最新のNotionデータを取り直します。</p>
+    <p class="help">Notionの画像URLは期限切れする場合があります。画像だけ表示されなくなった場合は「読込 / 更新」で最新URLを取り直してください。</p>
+
+    <h3>保存について</h3>
+    <ul class="help">
+      <li>APIキーは「保存する」を選んだ場合のみ、このブラウザの Local Storage に保存できます。</li>
+      <li>コメント・配置・切り抜き・表示設定もこのブラウザ内に保存されます。</li>
+      <li>テンプレ画像は IndexedDB に保存されます。</li>
+      <li>作者のサーバーへ保存する処理はありません。</li>
+    </ul>
+
+    <h3>Chromeでの確認場所</h3>
+    <p class="help"><code>開発者ツール → Application → Local Storage → このサイトのURL</code></p>
+    <p class="help">テンプレ画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
+
+    <h3>faviconでアイコンを作る</h3>
+    <p class="help">チェックすると画像プロパティを使わず、Notionページ側のアイコンを読み込みます。チェックを外すと画像プロパティ欄が使えます。</p>
+
+    <h3>文字色プロパティについて</h3>
+    <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
+
+    <h3>APIキーの危険性</h3>
+    <ul class="help">
+      <li>APIキーが流出すると、そのキーに許可された範囲で第三者にデータを閲覧される可能性があります。</li>
+      <li>書き込み権限のあるキーなら、別のツールから変更・削除に悪用される可能性があります。</li>
+      <li>可能なら読み取り専用のIntegrationを使用してください。</li>
+      <li>漏れた疑いがある場合は、すぐに無効化・再発行してください。</li>
+    </ul>
+
+    <div id="saveConfirmArea" style="display:none;margin-top:10px">
+      <div class="notice">
+        <strong>APIキーをこの端末に保存しますか？</strong>
+        <p class="help" style="margin-bottom:0">保存先は、この端末・このブラウザ・このサイト専用の Local Storage です。作者のサーバーには保存しません。ただし、同じサイト上で悪意あるJavaScriptが実行された場合などには読み取られる可能性があります。</p>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn" id="cancelSaveApiBtn" type="button" style="flex:1">保存しない</button>
+        <button class="btn primary" id="confirmSaveApiBtn" type="button" style="flex:1">理解して保存する</button>
+      </div>
+    </div>
+    <button class="btn" id="clearTokenBtn">保存したAPIキーを削除</button>
+    <button class="btn" id="clearLoadedCacheBtn" type="button">保存した読み込みデータを削除</button>
+  </div>
+</div>
+
+
+<div class="modal" id="cropModal">
+  <div class="modalbox" style="width:min(520px,100%)">
+    <strong>アイコン切り抜き</strong>
+    <div class="crop-stage" id="cropStage" style="margin-top:12px">
+      <img id="cropImg">
+      <div class="crop-circle"></div>
+    </div>
+    <label style="display:block;margin-top:10px">拡大</label>
+    <input id="zoomRange" type="range" min=".5" max="3" step=".01" value="1" style="width:100%">
+    <p class="small">画像をドラッグして位置を調整できます。</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="cropCancel" style="flex:1">キャンセル</button>
+      <button class="btn primary" id="cropSave" style="flex:1">この位置にする</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 公開者が一度だけ設定する中継Worker URL。
+const WORKER_URL = "https://cold-shadow-63ca.sarscoc.workers.dev";
+
+const $=s=>document.querySelector(s);
+const API_TOKEN_STORE='magiaMatrix.notion.apiToken.v1';
+const SETTINGS='magiaMatrix.redesign.settings.v1';
+const STATE='magiaMatrix.redesign.state.v1';
+const CACHE='magiaMatrix.notion.cache.v1';
+let items=[],selectedId=null,drag=null,cropWork=null;
+
+function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
+function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function saveState(s){saveJSON(STATE,s)}
+function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
+function setStatus(t){document.title='Magia Matrix — '+t}
+function safeColor(v){
+  const text=String(v||'').replace(/＃/g,'#');
+  const matches=[...text.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![0-9a-fA-F])/g)];
+  if(!matches.length)return null;
+  let hex=matches[matches.length-1][1];
+  if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+  return '#'+hex.toUpperCase();
+}
+
+
+function propText(p){
+  if(!p)return '';
+  if(p.type==='title')return (p.title||[]).map(x=>x.plain_text||'').join('');
+  if(p.type==='rich_text')return (p.rich_text||[]).map(x=>x.plain_text||'').join('');
+  if(p.type==='select')return p.select?.name||'';
+  if(p.type==='status')return p.status?.name||'';
+  if(p.type==='url')return p.url||'';
+  if(p.type==='number')return p.number==null?'':String(p.number);
+  if(p.type==='formula')return p.formula?.string??p.formula?.number??'';
+  return '';
+}
+function propNumber(p){
+  if(!p)return null;
+  if(p.type==='number')return typeof p.number==='number'?p.number:null;
+  const t=propText(p).trim();
+  if(!t)return null;
+  const n=Number(t);
+  return Number.isFinite(n)?n:null;
+}
+function propImage(p){
+  if(!p)return '';
+  if(p.type==='files'){
+    const f=p.files?.[0];return f?.file?.url||f?.external?.url||'';
+  }
+  if(p.type==='url')return p.url||'';
+  if(p.type==='rich_text')return propText(p);
+  return '';
+}
+function pageIcon(page){
+  const i=page.icon;if(!i)return '';
+  if(i.type==='file')return i.file?.url||'';
+  if(i.type==='external')return i.external?.url||'';
+  if(i.type==='emoji'){
+    const c=document.createElement('canvas');c.width=c.height=128;
+    const x=c.getContext('2d');x.font='88px serif';x.textAlign='center';x.textBaseline='middle';x.fillText(i.emoji,64,66);
+    return c.toDataURL('image/png');
+  }
+  return '';
+}
+function normalize(page,cfg){
+  const P=page.properties||{};
+  const name=propText(P[cfg.propName])||'名称未設定';
+  const url=page.url||'';
+  const notionIcon=pageIcon(page)||'';
+  const baseImage=cfg.useFavicon ? notionIcon : (propImage(P[cfg.propImage])||notionIcon);
+  const color=safeColor(propText(P[cfg.propColor]));
+  const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
+  return {id:page.id,name,url,baseImage,color,order};
+}
+
+function displayImage(it){
+  return it.baseImage || '';
+}
+
+function saveLoadedCache(){
+  const payload={
+    savedAt:Date.now(),
+    items:items.map(it=>({
+      id:it.id,
+      name:it.name,
+      url:it.url||'',
+      baseImage:it.baseImage||it.image||'',
+      color:it.color||null,
+      order:it.order??null
+    }))
+  };
+  saveJSON(CACHE,payload);
+}
+
+function showLibraryPage(which){
+  const page = which === 'templates' ? 'templates' : 'icons';
+  const iconsPage=$('#iconsPage');
+  const templatesPage=$('#templatesPage');
+  const iconsTab=$('#showIconsTab');
+  const templatesTab=$('#showTemplatesTab');
+
+  iconsPage.classList.remove('active');
+  templatesPage.classList.remove('active');
+  iconsTab.classList.remove('active');
+  templatesTab.classList.remove('active');
+
+  if(page==='templates'){
+    templatesPage.classList.add('active');
+    templatesTab.classList.add('active');
+  }else{
+    iconsPage.classList.add('active');
+    iconsTab.classList.add('active');
+  }
+  localStorage.setItem('magiaMatrix.libraryPage',page);
+}
+function restoreLibraryPage(){
+  const page=localStorage.getItem('magiaMatrix.libraryPage')||'icons';
+  showLibraryPage(page);
+}
+
+function restoreLoadedCache(){
+  const c=loadJSON(CACHE,null);
+  if(!c?.items?.length)return false;
+  const s=appState();s.items||={};
+  items=c.items.map(it=>{
+    if(!s.items[it.id])s.items[it.id]={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    return {...it,local:s.items[it.id]};
+  });
+  saveState(s);
+  // Current template has priority over generic cached placement state.
+  const tid=currentTemplateId();
+  if(tid)restoreTemplatePlacementState(tid);
+  else{renderLibrary();renderPlaced()}
+  if($('#connectionStatus')){
+    const d=new Date(c.savedAt);
+    $('#connectionStatus').textContent=`前回データ ${items.length}件`;
+    $('#connectionStatus').title=`保存日時: ${d.toLocaleString()}`;
+  }
+  return true;
+}
+function clearLoadedCache(){
+  localStorage.removeItem(CACHE);
+  items=[];
+  renderLibrary();
+  renderPlaced();
+  if($('#connectionStatus'))$('#connectionStatus').textContent='保存データなし';
+}
+
+function saveSettings(saveToken=false){
+  const useFavicon=$('#useFavicon').checked;
+  const s={
+    notionSource:$('#notionSource').value.trim(),
+    propName:$('#propName').value.trim(),
+    propImage:useFavicon ? '' : $('#propImage').value.trim(),
+    useFavicon,
+    propColor:$('#propColor').value.trim(),
+    propOrder:$('#propOrder').value.trim()
+  };
+  saveJSON(SETTINGS,s);
+
+  if(saveToken){
+    const token=$('#apiToken').value.trim();
+    if(token)localStorage.setItem(API_TOKEN_STORE,token);
+  }
+}
+function restoreSettings(){
+  const s=loadJSON(SETTINGS,{});
+  for(const k of ['notionSource','propName','propImage','propColor','propOrder']){
+    if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
+  }
+  if(typeof s.useFavicon==='boolean')$('#useFavicon').checked=s.useFavicon;
+
+  const savedToken=localStorage.getItem(API_TOKEN_STORE)||'';
+  if(savedToken)$('#apiToken').value=savedToken;
+}
+function clearToken(){
+  localStorage.removeItem(API_TOKEN_STORE);
+  $('#apiToken').value='';
+  $('#connectionStatus').textContent='保存したAPIキーを削除しました';
+}
+
+
+function setLibraryLoading(on){
+  const loading=$('#libraryLoading'), list=$('#iconList');
+  if(!loading||!list)return;
+  loading.classList.toggle('active',!!on);
+  list.style.display=on?'none':'grid';
+}
+
+async function loadNotion(){
+  setLibraryLoading(true);
+  $('#connectionStatus').textContent='読み込み中…';
+  saveSettings(false);
+  const cfg=loadJSON(SETTINGS,{});
+  cfg.useFavicon=!!cfg.useFavicon;
+  const token=$('#apiToken').value.trim();
+  if(!cfg.notionSource||!token){setLibraryLoading(false);alert('Notion API・データベースURL/IDを入力してください。');return}
+  if(WORKER_URL.includes('REPLACE-WITH-YOUR-WORKER')){setLibraryLoading(false);alert('公開者側でWorker URLがまだ設定されていません。');return}
+  try{
+    const r=await fetch(WORKER_URL.replace(/\/$/,'')+'/notion/read',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({notionToken:token,source:cfg.notionSource})
+    });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);
+    const s=appState();s.items||={};
+    items=(j.results||[]).map(page=>{
+      const v=normalize(page,cfg);
+      if(!s.items[v.id])s.items[v.id]={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      v.local=s.items[v.id];
+      return v;
+    });
+    if(cfg.propOrder){
+      items.sort((a,b)=>{
+        const an=a.order, bn=b.order;
+        if(an==null && bn==null) return 0;
+        if(an==null) return 1;
+        if(bn==null) return -1;
+        return an-bn;
+      });
+    }
+    saveState(s);saveLoadedCache();renderLibrary();renderPlaced();
+    $('#connectionStatus').textContent=items.length+'件 読込済み';
+    setLibraryLoading(false);
+  }catch(e){
+    setLibraryLoading(false);
+    $('#connectionStatus').textContent='読込エラー';
+    alert('Notionの読み込みに失敗しました：'+e.message);
+  }
+}
+
+/* template + placement log */
+const TEMPLATE_CURRENT='magiaMatrix.currentTemplate.v1';
+const TEMPLATE_STATES='magiaMatrix.templateStates.v1';
+
+function idb(){
+  return new Promise((ok,no)=>{
+    const r=indexedDB.open('magiaMatrixDB',2);
+    r.onupgradeneeded=()=>{
+      const db=r.result;
+      if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates');
+    };
+    r.onsuccess=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function tplGetRecord(id){
+  if(!id)return null;
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const r=db.transaction('templates').objectStore('templates').get(id);
+    r.onsuccess=()=>ok(r.result||null);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function tplSetRecord(id,record){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const t=db.transaction('templates','readwrite');
+    t.objectStore('templates').put(record,id);
+    t.oncomplete=ok;
+    t.onerror=()=>no(t.error);
+  });
+}
+async function hashText(text){
+  if(crypto?.subtle){
+    const b=new TextEncoder().encode(text);
+    const h=await crypto.subtle.digest('SHA-256',b);
+    return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,20);
+  }
+  let h=0;
+  for(let i=0;i<text.length;i++)h=((h<<5)-h)+text.charCodeAt(i)|0;
+  return 'tpl-'+Math.abs(h);
+}
+function currentTemplateId(){
+  return localStorage.getItem(TEMPLATE_CURRENT)||'';
+}
+
+function templateStates(){
+  return loadJSON(TEMPLATE_STATES,{});
+}
+function setTemplateStates(v){
+  saveJSON(TEMPLATE_STATES,v);
+}
+function cloneItemState(itemsState){
+  return JSON.parse(JSON.stringify(itemsState||{}));
+}
+function saveCurrentTemplateState(stateOverride=null){
+  const tid=currentTemplateId();
+  if(!tid)return;
+  const s=stateOverride||appState();
+  const all=templateStates();
+  all[tid]={
+    savedAt:Date.now(),
+    items:cloneItemState(s.items||{})
+  };
+  setTemplateStates(all);
+}
+function restoreTemplatePlacementState(tid){
+  const all=templateStates();
+  const saved=all[tid];
+  const s=appState();
+  s.items=cloneItemState(saved?.items||{});
+  // ensure every loaded item has a local record
+  items.forEach(it=>{
+    if(!s.items[it.id]){
+      s.items[it.id]={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    }
+    it.local=s.items[it.id];
+  });
+  saveState(s);
+  renderLibrary();
+  renderPlaced();
+  resetIconEditor();
+}
+async function tplAllRecords(){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const tx=db.transaction('templates');
+    const store=tx.objectStore('templates');
+    const req=store.getAll();
+    req.onsuccess=()=>ok((req.result||[]).sort((a,b)=>(b.updatedAt||b.createdAt||b.uploadedAt||0)-(a.updatedAt||a.createdAt||a.uploadedAt||0)));
+    req.onerror=()=>no(req.error);
+  });
+}
+async function tplDeleteRecord(id){
+  if(!id)return;
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const tx=db.transaction('templates','readwrite');
+    tx.objectStore('templates').delete(id);
+    tx.oncomplete=ok;
+    tx.onerror=()=>no(tx.error);
+  });
+}
+
+function makeTemplateId(){
+  if(crypto?.randomUUID)return 'tpl-'+crypto.randomUUID();
+  return 'tpl-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+}
+function makeTemplateName(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return `テンプレ ${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+async function createNewTemplate(){
+  // Save the old editing page first.
+  saveCurrentTemplateState();
+
+  const id=makeTemplateId();
+  const rec={
+    id,
+    name:makeTemplateName(),
+    dataUrl:'',
+    createdAt:Date.now(),
+    updatedAt:Date.now()
+  };
+  await tplSetRecord(id,rec);
+  localStorage.setItem(TEMPLATE_CURRENT,id);
+
+  // Brand-new template starts with no placed icons, comments or crop edits.
+  const s=appState();
+  s.items={};
+  saveState(s);
+
+  const all=templateStates();
+  all[id]={savedAt:Date.now(),items:{}};
+  setTemplateStates(all);
+
+  items.forEach(it=>{
+    const local={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    s.items[it.id]=local;
+    it.local=local;
+  });
+  saveState(s);
+  saveCurrentTemplateState(s);
+
+  showTemplateRecord(rec);
+  renderLibrary();
+  renderPlaced();
+  resetIconEditor();
+  await renderTemplateTabs();
+}
+
+async function renderTemplateTabs(){
+  const box=$('#templateTabs');
+  if(!box)return;
+  const recs=await tplAllRecords();
+  box.innerHTML='';
+
+  if(!recs.length){
+    box.innerHTML='<div class="template-tab-empty">まだありません</div>';
+    return;
+  }
+
+  const current=currentTemplateId();
+
+  recs.forEach(rec=>{
+    const card=document.createElement('div');
+    card.className='template-card'+(rec.id===current?' active':'');
+    card.dataset.templateId=rec.id;
+
+    const open=document.createElement('button');
+    open.type='button';
+    open.className='template-tab'+(rec.id===current?' active':'');
+    open.title='このテンプレを編集';
+
+    if(rec.dataUrl){
+      const im=document.createElement('img');
+      im.className='template-tab-thumb';
+      im.src=rec.dataUrl;
+      open.appendChild(im);
+    }else{
+      const empty=document.createElement('div');
+      empty.className='template-tab-thumb template-empty-thumb';
+      empty.textContent='NO IMAGE';
+      open.appendChild(empty);
+    }
+
+    const nm=document.createElement('span');
+    nm.className='template-tab-name';
+    nm.textContent=rec.name||'保存テンプレ';
+    open.appendChild(nm);
+
+    // Open the saved template IN EDIT MODE.
+    // Do not jump to the character/icon page.
+    open.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await switchTemplate(rec.id);
+    };
+
+    const del=document.createElement('button');
+    del.type='button';
+    del.className='template-delete-btn';
+    del.textContent='削除';
+    del.title='このテンプレを削除';
+    del.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await deleteSavedTemplate(rec.id);
+    };
+
+    card.append(open,del);
+    box.appendChild(card);
+  });
+}
+
+async function deleteSavedTemplate(id){
+  if(!id)return;
+
+  const rec=await tplGetRecord(id);
+  const name=rec?.name||'このテンプレ';
+
+  if(!window.confirm(`「${name}」を削除しますか？\n配置・補足・切り抜き・個別色も一緒に削除されます。`))return;
+
+  const wasCurrent=id===currentTemplateId();
+
+  await tplDeleteRecord(id);
+
+  const all=templateStates();
+  delete all[id];
+  setTemplateStates(all);
+
+  if(wasCurrent){
+    localStorage.removeItem(TEMPLATE_CURRENT);
+
+    const remaining=await tplAllRecords();
+    if(remaining.length){
+      const next=remaining[0];
+      localStorage.setItem(TEMPLATE_CURRENT,next.id);
+      showTemplateRecord(next);
+      restoreTemplatePlacementState(next.id);
+    }else{
+      showTemplateRecord(null);
+      const s=appState();
+      s.items={};
+      items.forEach(it=>{
+        const local={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+        s.items[it.id]=local;
+        it.local=local;
+      });
+      saveState(s);
+      renderLibrary();
+      renderPlaced();
+      resetIconEditor();
+    }
+  }
+
+  await renderTemplateTabs();
+}
+
+async function switchTemplate(id){
+  if(!id)return;
+
+  const oldId=currentTemplateId();
+  if(oldId && oldId!==id)saveCurrentTemplateState();
+
+  const rec=await tplGetRecord(id);
+  if(!rec)return;
+
+  localStorage.setItem(TEMPLATE_CURRENT,id);
+  showTemplateRecord(rec);
+  restoreTemplatePlacementState(id);
+  await renderTemplateTabs();
+}
+
+function showTemplateRecord(rec){
+  const c=$('#canvas'),im=$('#templateImg'),meta=$('#templateMeta');
+  if(rec?.dataUrl){
+    im.src=rec.dataUrl;
+    c.classList.add('has-template');
+    meta.textContent=rec.name||'保存済みテンプレ';
+  }else{
+    im.removeAttribute('src');
+    c.classList.remove('has-template');
+    meta.textContent='テンプレ未読込';
+  }
+}
+async function restoreTemplate(){
+  let id=currentTemplateId();
+  let rec=id ? await tplGetRecord(id) : null;
+
+  if(!rec){
+    const recs=await tplAllRecords();
+    if(recs.length){
+      rec=recs[0];
+      id=rec.id;
+      localStorage.setItem(TEMPLATE_CURRENT,id);
+    }
+  }
+
+  if(rec){
+    showTemplateRecord(rec);
+    restoreTemplatePlacementState(id);
+  }else{
+    await createNewTemplate();
+  }
+
+  await renderTemplateTabs();
+}
+async function saveTemplateFile(file){
+  let id=currentTemplateId();
+
+  // If there is no current editing page yet, create one first.
+  if(!id){
+    await createNewTemplate();
+    id=currentTemplateId();
+  }
+
+  const dataUrl=await new Promise((ok,no)=>{
+    const r=new FileReader();
+    r.onload=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+    r.readAsDataURL(file);
+  });
+
+  const old=await tplGetRecord(id)||{
+    id,
+    name:makeTemplateName(),
+    createdAt:Date.now()
+  };
+
+  const rec={
+    ...old,
+    id,
+    dataUrl,
+    imageName:file.name||old.imageName||'template',
+    updatedAt:Date.now()
+  };
+  await tplSetRecord(id,rec);
+
+  saveCurrentTemplateState();
+  showTemplateRecord(rec);
+  await renderTemplateTabs();
+  return id;
+}
+async function clearCurrentTemplate(){
+  const id=currentTemplateId();
+  if(!id)return;
+  await deleteSavedTemplate(id);
+}
+function setupTemplateDrop(){
+  const c=$('#canvas');
+  ['dragenter','dragover'].forEach(t=>c.addEventListener(t,e=>{
+    e.preventDefault();
+    $('#templateDrop').classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(t=>c.addEventListener(t,e=>$('#templateDrop').classList.remove('dragover')));
+  c.addEventListener('drop',async e=>{
+    const f=[...(e.dataTransfer?.files||[])].find(x=>x.type.startsWith('image/'));
+    if(!f)return;
+    e.preventDefault();
+    await saveTemplateFile(f);
+  });
+}
+
+
+
+function applyTextOutline(el){
+  if(!el)return;
+  const on=(appState().display?.textOutline||'off')==='on';
+  el.classList.toggle('text-outline',on);
+}
+
+function currentIconShape(){
+  return appState().display?.iconShape || 'circle';
+}
+function applyShapeClass(el,shape=currentIconShape()){
+  if(!el)return;
+  el.classList.remove('mode-original','mode-circle','mode-square');
+  el.classList.add('mode-'+shape);
+}
+
+function renderLibrary(){
+  const list=$('#iconList');list.innerHTML='';
+  $('#libraryCount').textContent=items.length+'件';
+  if(!items.length){list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';return}
+  items.forEach(it=>{
+    const card=document.createElement('div');card.className='source-card';card.draggable=true;
+    card.draggable=false;
+    card.addEventListener('pointerdown',e=>startLibraryDrag(e,it,card));
+    card.addEventListener('dblclick',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openDrawer(it.id);
+      openCropForSelected();
+    });
+    const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
+    const display=appState().display||{};
+    if(display.iconBorderUseTextColor){
+      const sourceChosen=(display.useNotionColor&&it.color)||display.globalTextColor||'#202327';
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',sourceChosen);
+    }
+    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';av.append(im);
+    const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
+    card.append(av,nm);list.append(card);
+  });
+}
+function startLibraryDrag(e,it,card){
+  if(e.button!=null&&e.button!==0)return;
+  e.preventDefault();
+  const startX=e.clientX,startY=e.clientY;
+  let moved=false,raf=0,lastX=startX,lastY=startY;
+
+  const ghost=document.createElement('div');
+  ghost.className='drag-ghost';
+  applyShapeClass(ghost);
+  const gi=document.createElement('img');
+  gi.src=displayImage(it)||'';
+  ghost.appendChild(gi);
+  ghost.style.left='0';
+  ghost.style.top='0';
+  ghost.style.transform=`translate3d(${startX-32}px,${startY-32}px,0)`;
+  document.body.appendChild(ghost);
+
+  const paint=()=>{
+    raf=0;
+    ghost.style.transform=`translate3d(${lastX-32}px,${lastY-32}px,0)`;
+  };
+  const move=ev=>{
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>5)moved=true;
+    if(!raf)raf=requestAnimationFrame(paint);
+  };
+  const up=ev=>{
+    if(raf)cancelAnimationFrame(raf);
+    ghost.remove();
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+
+    if(!moved){openDrawer(it.id);return}
+    const c=$('#canvas').getBoundingClientRect();
+    if(ev.clientX>=c.left&&ev.clientX<=c.right&&ev.clientY>=c.top&&ev.clientY<=c.bottom){
+      placeItem(it.id,(ev.clientX-c.left)/c.width*100,(ev.clientY-c.top)/c.height*100);
+    }
+  };
+  window.addEventListener('pointermove',move,{passive:true});
+  window.addEventListener('pointerup',up,{once:true});
+  window.addEventListener('pointercancel',up,{once:true});
+}
+function placeItem(id,x,y){
+  mutate(s=>{
+    const l=s.items[id]||(s.items[id]={});
+    l.placed=true;l.x=Math.max(2,Math.min(98,x));l.y=Math.max(2,Math.min(98,y));
+  });
+  const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
+  renderPlaced();
+}
+function cropStyle(img,c){
+  c=c||{x:0,y:0,zoom:1};
+  img.style.transform=`translate(${Number(c.x||0)}%,${Number(c.y||0)}%) scale(${Number(c.zoom||1)})`;
+}
+function renderPlaced(){
+  const c=$('#canvas');c.querySelectorAll('.placed').forEach(e=>e.remove());
+  const s=appState(),d=s.display||{};
+  document.documentElement.style.setProperty('--icon-size',(d.iconSize||72)+'px');
+  c.style.fontFamily=d.fontFamily||'system-ui';
+  items.forEach(it=>{
+    const l=s.items?.[it.id];if(!l?.placed)return;
+    const el=document.createElement('div');el.className='placed';el.dataset.id=it.id;
+    el.style.left=(l.x??50)+'%';el.style.top=(l.y??50)+'%';
+    const chosen=(l.useColor&&safeColor(l.color))||(d.useNotionColor&&it.color)||d.globalTextColor||'#202327';
+    el.style.color=chosen;
+    const av=document.createElement('div');av.className='placed-avatar';applyShapeClass(av);
+    if(d.iconBorderUseTextColor){
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',chosen);
+    }
+    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);el.append(av);
+    if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
+    if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';applyTextOutline(cm);
+      const disp=appState().display||{};
+      cm.classList.add((disp.commentPosition||'top')==='side'?'comment-side':'comment-top');
+      cm.style.fontSize=(disp.commentFontSize??10)+'px';
+      applyTextOutline(cm);cm.textContent=l.comment;el.append(cm)}
+    el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
+    el.addEventListener('dblclick',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openDrawer(it.id);
+      openCropForSelected();
+    });
+    c.append(el);
+  });
+  document.querySelectorAll('.placed-name,.placed-comment').forEach(applyTextOutline);
+}
+function startPlacedDrag(e,id,el){
+  if(e.button!=null&&e.button!==0)return;
+  e.preventDefault();
+  const r=$('#canvas').getBoundingClientRect();
+  const sx=e.clientX,sy=e.clientY;
+  let x=parseFloat(el.style.left)||50,y=parseFloat(el.style.top)||50;
+  let raf=0,lastX=e.clientX,lastY=e.clientY;
+  drag={moved:false};
+
+  const paint=()=>{
+    raf=0;
+    x=Math.max(2,Math.min(98,(lastX-r.left)/r.width*100));
+    y=Math.max(2,Math.min(98,(lastY-r.top)/r.height*100));
+    el.style.left=x+'%';el.style.top=y+'%';
+  };
+  const mv=ev=>{
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!drag.moved&&Math.hypot(lastX-sx,lastY-sy)>4)drag.moved=true;
+    if(!raf)raf=requestAnimationFrame(paint);
+  };
+  const up=()=>{
+    if(raf){cancelAnimationFrame(raf);paint()}
+    window.removeEventListener('pointermove',mv);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+    if(drag.moved){
+      mutate(s=>{s.items[id].x=x;s.items[id].y=y});
+      const it=items.find(v=>v.id===id);if(it)it.local=appState().items[id];
+    }else{
+      openDrawer(id);
+    }
+    setTimeout(()=>drag=null,0);
+  };
+  window.addEventListener('pointermove',mv,{passive:true});
+  window.addEventListener('pointerup',up,{once:true});
+  window.addEventListener('pointercancel',up,{once:true});
+}
+
+
+function updateSelectedCommentRealtime(){
+  if(!selectedId)return;
+  const value=$('#commentInput')?.value ?? '';
+  mutate(s=>{
+    if(!s.items[selectedId])return;
+    s.items[selectedId].comment=value;
+  });
+  const it=items.find(x=>x.id===selectedId);
+  if(it&&appState().items[selectedId])it.local=appState().items[selectedId];
+  renderPlaced();
+}
+
+function resetIconEditor(){
+  selectedId=null;
+  if($('#iconEditorContent'))$('#iconEditorContent').style.display='none';
+  if($('#iconEditorEmpty'))$('#iconEditorEmpty').style.display='block';
+}
+function openDrawer(id){
+  toggleDisplayPanel(true);
+  selectedId=id;
+  const it=items.find(x=>x.id===id);if(!it)return;
+  const l=appState().items[id]||{};
+  $('#iconEditorEmpty').style.display='none';
+  $('#iconEditorContent').style.display='block';
+  $('#detailName').textContent=it.name;applyTextOutline($('#detailName'));
+  $('#detailImg').src=displayImage(it)||'';
+  const shape=currentIconShape();
+  applyShapeClass($('#detailImg').parentElement,shape);
+  if(shape!=='original')cropStyle($('#detailImg'),l.crop);else $('#detailImg').style.transform='';
+  $('#cropBtn').disabled=shape==='original';
+  $('#cropBtn').textContent=shape==='original'?'切り抜きなし':'切り抜き';
+  $('#commentInput').value=l.comment||'';
+  $('#itemColor').value=safeColor(l.color)||'#202327';
+  $('#useItemColor').checked=!!l.useColor;
+}
+function saveItem(){
+  if(!selectedId)return;
+  mutate(s=>{
+    const l=s.items[selectedId];
+    l.comment=$('#commentInput').value;l.color=$('#itemColor').value;l.useColor=$('#useItemColor').checked;
+  });
+  const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
+  renderPlaced();openDrawer(selectedId);
+}
+
+/* crop */
+function openCrop(){
+  if(!selectedId)return;const it=items.find(x=>x.id===selectedId),l=appState().items[selectedId];
+  cropWork={...(l.crop||{x:0,y:0,zoom:1})};$('#cropImg').src=displayImage(it)||'';$('#zoomRange').value=cropWork.zoom||1;
+  const shape=currentIconShape();
+  if(shape==='original')return;
+  const guide=$('#cropStage .crop-circle');
+  guide.classList.toggle('mode-square',shape==='square');
+  $('#cropModal').classList.add('open');requestAnimationFrame(updateCrop);
+}
+function updateCrop(){
+  if(!cropWork)return;
+  const img=$('#cropImg');
+  const z=Number(cropWork.zoom||1);
+  const x=Number(cropWork.x||0);
+  const y=Number(cropWork.y||0);
+  img.style.transform=`translate(${x}%,${y}%) scale(${z})`;
+  $('#cropZoom').value=z;
+}
+
+function openCropForSelected(){
+  if(!selectedId)return;
+  const it=items.find(x=>x.id===selectedId);if(!it)return;
+  const l=appState().items[selectedId]||{};
+  const shape=currentIconShape();
+  if(shape==='original')return;
+  cropWork={...(l.crop||{x:0,y:0,zoom:1})};
+  $('#cropImg').src=displayImage(it)||'';
+  const guide=$('#cropStage .crop-circle');
+  guide?.classList.toggle('mode-square',shape==='square');
+  $('#cropModal').classList.add('open');
+  requestAnimationFrame(updateCrop);
+}
+
+function setupCrop(){
+  const stage=$('#cropStage');
+  const img=$('#cropImg');
+  const zoom=$('#cropZoom');
+
+  // Zoom slider
+  zoom.addEventListener('input',()=>{
+    if(!cropWork)return;
+    cropWork.zoom=Number(zoom.value);
+    updateCrop();
+  });
+
+  // Direct image drag inside crop stage
+  let dragging=false;
+  let startX=0,startY=0,startCropX=0,startCropY=0;
+
+  const move=e=>{
+    if(!dragging||!cropWork)return;
+    const r=stage.getBoundingClientRect();
+    const dx=(e.clientX-startX)/Math.max(1,r.width)*100;
+    const dy=(e.clientY-startY)/Math.max(1,r.height)*100;
+
+    // crop x/y are translation percentages. Clamp so image can't be thrown absurdly far away.
+    cropWork.x=Math.max(-100,Math.min(100,startCropX+dx));
+    cropWork.y=Math.max(-100,Math.min(100,startCropY+dy));
+    updateCrop();
+  };
+
+  const end=()=>{
+    if(!dragging)return;
+    dragging=false;
+    stage.classList.remove('dragging');
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',end);
+    window.removeEventListener('pointercancel',end);
+  };
+
+  stage.addEventListener('pointerdown',e=>{
+    if(!cropWork)return;
+    if(e.button!=null&&e.button!==0)return;
+    e.preventDefault();
+    dragging=true;
+    startX=e.clientX;
+    startY=e.clientY;
+    startCropX=Number(cropWork.x||0);
+    startCropY=Number(cropWork.y||0);
+    stage.classList.add('dragging');
+    stage.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove',move,{passive:true});
+    window.addEventListener('pointerup',end,{once:true});
+    window.addEventListener('pointercancel',end,{once:true});
+  });
+
+  img.addEventListener('dragstart',e=>e.preventDefault());
+}
+function saveCrop(){
+  mutate(s=>s.items[selectedId].crop=cropWork);
+  const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
+  $('#cropModal').classList.remove('open');renderPlaced();openDrawer(selectedId);
+}
+
+
+/* left/right resizable panes */
+function applyPaneWidth(px){
+  const ws=$('#workspace');
+  if(!ws)return;
+  const total=ws.getBoundingClientRect().width||window.innerWidth;
+  const maxLeft=Math.max(220,total-320);
+  const width=Math.max(180,Math.min(maxLeft,Number(px)||300));
+  ws.style.setProperty('grid-template-columns',`${width}px 12px minmax(0,1fr)`,'important');
+}
+function restorePaneWidth(){
+  applyPaneWidth(appState().libraryWidth||300);
+}
+function setupSplitter(){
+  const splitter=$('#splitter');
+  let active=false;
+  const move=e=>{
+    if(!active)return;
+    const ws=$('#workspace').getBoundingClientRect();
+    applyPaneWidth(e.clientX-ws.left);
+  };
+  const end=()=>{
+    if(!active)return;
+    active=false;
+    splitter.classList.remove('dragging');
+    const cols=getComputedStyle($('#workspace')).gridTemplateColumns.split(' ');
+    const width=parseFloat(cols[0])||300;
+    mutate(s=>s.libraryWidth=width);
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',end);
+  };
+  splitter.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    active=true;
+    splitter.classList.add('dragging');
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',end);
+  });
+}
+
+function setupHeaderToggle(){
+  const wrap=$('#headerWrap');
+  const btn=$('#headerToggle');
+  if(!wrap||!btn)return;
+  const apply=closed=>{
+    wrap.classList.toggle('collapsed',closed);
+    btn.textContent=closed?'接続設定を開く':'接続設定を閉じる';
+    localStorage.setItem('magiaMatrix.header.collapsed.v4',closed?'1':'0');
+  };
+  apply(localStorage.getItem('magiaMatrix.header.collapsed.v4')==='1');
+  btn.onclick=()=>apply(!wrap.classList.contains('collapsed'));
+}
+
+
+function syncImageFieldWithFavicon(){
+  const on=$('#useFavicon').checked;
+  const img=$('#propImage');
+  const imgField=$('#propImageField');
+  if(!img)return;
+  img.disabled=on;
+  imgField?.classList.toggle('disabled',on);
+  if(on){
+    if(img.value)img.dataset.prevValue=img.value;
+    img.value='';
+    img.placeholder='favicon使用中';
+  }else{
+    if(!img.value&&img.dataset.prevValue)img.value=img.dataset.prevValue;
+    img.placeholder='';
+  }
+}
+
+
+function syncFaviconDisplayState(){
+  syncImageFieldWithFavicon();
+  saveSettings(false);
+  $('#connectionStatus').textContent='設定変更：読込 / 更新で反映';
+}
+
+/* display settings */
+
+function restoreDisplayPanelState(){
+  const closed=localStorage.getItem('magiaMatrix.displayPanel.closed')!=='0';
+  $('#settings').classList.toggle('floating-closed',closed);
+}
+function toggleDisplayPanel(forceOpen=null){
+  const panel=$('#settings');
+  const isClosed=panel.classList.contains('floating-closed');
+  const open=forceOpen===null ? isClosed : !!forceOpen;
+  panel.classList.toggle('floating-closed',!open);
+  localStorage.setItem('magiaMatrix.displayPanel.closed',open?'0':'1');
+}
+
+function restoreDisplay(){
+  const d=appState().display||{};
+  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentPosition').value=d.commentPosition||'top';$('#textOutline').value=d.textOutline||'off';
+  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
+  $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+}
+function bindDisplay(){
+  const update=()=>{
+    mutate(s=>s.display={
+      iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
+      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
+    });
+    $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
+  };
+  ['iconSize','iconShape','commentFontSize','commentPosition','textOutline','showName','showComment','globalTextColor','useNotionColor','iconBorderUseTextColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+}
+
+$('#loadBtn').onclick=loadNotion;
+$('#apiHelpBtn').onclick=e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  $('#helpModal').classList.add('open');
+};
+
+$('#saveApiBtn').onclick=e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(!$('#apiToken').value.trim()){
+    alert('先にNotion APIキーを入力してください。');
+    return;
+  }
+  $('#helpModal').classList.add('open');
+  $('#saveConfirmArea').style.display='block';
+};
+
+$('#cancelSaveApiBtn').onclick=e=>{
+  e.preventDefault();
+  $('#saveConfirmArea').style.display='none';
+};
+
+$('#confirmSaveApiBtn').onclick=e=>{
+  e.preventDefault();
+  const token=$('#apiToken').value.trim();
+  if(!token){
+    alert('先にNotion APIキーを入力してください。');
+    return;
+  }
+  saveSettings(true);
+  $('#saveConfirmArea').style.display='none';
+  $('#helpModal').classList.remove('open');
+  $('#connectionStatus').textContent='APIキーをこの端末に保存しました';
+};
+
+$('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
+
+
+
+
+
+
+$('#clearTokenBtn').onclick=clearToken;
+$('#clearLoadedCacheBtn').onclick=clearLoadedCache;
+$('#saveItemBtn').onclick=saveItem;
+$('#cropBtn').onclick=openCrop;
+$('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
+$('#cropSave').onclick=saveCrop;
+$('#displaySettingsToggle').onclick=()=>toggleDisplayPanel(false);
+$('#showIconsTab').onclick=()=>showLibraryPage('icons');
+$('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
+$('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
+$('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
+$('#newTemplateBtn').onclick=createNewTemplate;
+$('#clearTemplateBtn').onclick=clearCurrentTemplate;
+$('#useFavicon').addEventListener('change',syncFaviconDisplayState);
+window.addEventListener('beforeunload',()=>saveCurrentTemplateState());
+
+
+
+restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();syncImageFieldWithFavicon();setupTemplateDrop();setupCrop();
+restoreDisplayPanelState();
+restoreLibraryPage();
+syncImageFieldWithFavicon();
+
+restoreLoadedCache();
+
+$('#commentFontSize').addEventListener('input',()=>{
+  $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
+});
+
+restoreTemplate();
+</script>
+</body>
+</html>
