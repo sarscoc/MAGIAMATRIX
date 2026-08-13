@@ -27,7 +27,7 @@ button{cursor:pointer}
   color:#353b40;white-space:nowrap;margin-right:2px
 }
 .connect-grid{
-  display:grid;grid-template-columns:minmax(150px,.95fr) minmax(240px,1.55fr) repeat(4,minmax(92px,.7fr));
+  display:grid;grid-template-columns:minmax(150px,.95fr) minmax(240px,1.55fr) minmax(165px,.9fr) minmax(165px,.9fr) minmax(200px,1fr);
   gap:6px;align-items:center;flex:1;min-width:0
 }
 .field{min-width:0}
@@ -200,19 +200,15 @@ button{cursor:pointer}
         <input id="notionSource" placeholder="Notion URL または ID">
       </div>
       <div class="field optional">
-        <label>名前</label>
+        <label>名前（名前に該当するプロパティ）</label>
         <input id="propName" value="名前">
       </div>
       <div class="field optional">
-        <label>画像</label>
+        <label>画像（画像に該当するプロパティ）</label>
         <input id="propImage" value="画像">
       </div>
-      <div class="field optional">
-        <label>URL</label>
-        <input id="propUrl" value="URL">
-      </div>
-      <div class="field optional">
-        <label>文字色</label>
+<div class="field optional">
+        <label>文字色（文字色に該当するプロパティ・任意）</label>
         <input id="propColor" placeholder="文字色">
       </div>
     </div>
@@ -328,6 +324,22 @@ button{cursor:pointer}
     <h3>接続について</h3>
     <p class="help">利用者はWorker URLを入力する必要はありません。中継先は公開者がこのHTML内に一度だけ設定します。利用者が入力するのはNotion APIキーとデータベースURL/IDです。</p>
 
+    <h3>Cloudflare「Workers & Pages」について</h3>
+    <p class="help">これは、Notionとこのページの間をつなぐ小さな中継処理（Worker）を公開するために使います。利用者が毎回設定するものではなく、<strong>このサイトの公開者が最初に1回だけ作ります。</strong></p>
+    <ol class="help">
+      <li>Cloudflareにログインします。</li>
+      <li>ダッシュボードの <strong>Workers &amp; Pages</strong> を開きます。</li>
+      <li><strong>Create application</strong> を選びます。</li>
+      <li><strong>Create Worker</strong> を選び、Workerを作成して <strong>Deploy</strong> します。</li>
+      <li>作成したWorkerのコード編集画面で、このセットに入っている <code>worker.js</code> の内容へ置き換えて、もう一度Deployします。</li>
+      <li><code>https://xxxxx.workers.dev</code> のようなURLが発行されます。</li>
+      <li>そのURLを <code>index.html</code> 内の <code>WORKER_URL</code> に1回だけ設定します。</li>
+    </ol>
+    <div class="notice">
+      <strong>利用者はWorkers &amp; Pagesを触りません</strong>
+      <p class="help" style="margin-bottom:0">公開者側でWorker URLをHTMLへ埋め込んでおけば、利用者が入力するのはNotion APIキーとデータベースURL/IDだけです。</p>
+    </div>
+
     <h3>保存について</h3>
     <ul class="help">
       <li>APIキーは「保存する」を選んだ場合のみ、このブラウザの Local Storage に保存できます。</li>
@@ -339,6 +351,9 @@ button{cursor:pointer}
     <h3>Chromeでの確認場所</h3>
     <p class="help"><code>開発者ツール → Application → Local Storage → このサイトのURL</code></p>
     <p class="help">テンプレ画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
+
+    <h3>文字色プロパティについて</h3>
+    <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
 
     <h3>APIキーの危険性</h3>
     <ul class="help">
@@ -374,7 +389,7 @@ button{cursor:pointer}
 
 <script>
 // 公開者が一度だけ設定する中継Worker URL。
-const WORKER_URL = "https://REPLACE-WITH-YOUR-WORKER.workers.dev";
+const WORKER_URL = "https://cold-shadow-63ca.sarscoc.workers.dev";
 
 const $=s=>document.querySelector(s);
 const SETTINGS='magiaMatrix.redesign.settings.v1';
@@ -387,7 +402,14 @@ function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showNam
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
-function safeColor(v){return /^#[0-9a-fA-F]{6}$/.test(v||'')?v:null}
+function safeColor(v){
+  const text=String(v||'').replace(/＃/g,'#');
+  const matches=[...text.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![0-9a-fA-F])/g)];
+  if(!matches.length)return null;
+  let hex=matches[matches.length-1][1];
+  if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+  return '#'+hex.toUpperCase();
+}
 function favicon(url){try{return new URL('/favicon.ico',url).href}catch{return ''}}
 
 function propText(p){
@@ -424,7 +446,7 @@ function pageIcon(page){
 function normalize(page,cfg){
   const P=page.properties||{};
   const name=propText(P[cfg.propName])||'名称未設定';
-  const url=propText(P[cfg.propUrl])||page.url||'';
+  const url=page.url||'';
   const image=propImage(P[cfg.propImage])||pageIcon(page)||favicon(url);
   const color=safeColor(propText(P[cfg.propColor]));
   return {id:page.id,name,url,image,color};
@@ -436,7 +458,6 @@ function saveSettings(){
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
     propImage:$('#propImage').value.trim(),
-    propUrl:$('#propUrl').value.trim(),
     propColor:$('#propColor').value.trim(),
     saveApiToken:keep,
     apiToken:keep?$('#apiToken').value:''
@@ -445,7 +466,7 @@ function saveSettings(){
 }
 function restoreSettings(){
   const s=loadJSON(SETTINGS,{});
-  for(const k of ['notionSource','propName','propImage','propUrl','propColor']){
+  for(const k of ['notionSource','propName','propImage','propColor']){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
   $('#saveApiToken').checked=!!s.saveApiToken;
