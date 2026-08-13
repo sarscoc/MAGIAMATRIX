@@ -152,9 +152,7 @@ button{cursor:pointer}
 }
 .check{display:flex!important;align-items:center;gap:7px;color:#333!important}
 .check input{width:auto}
-.save-api-row{display:flex;align-items:center;gap:8px}
-.save-api-row input{width:auto;flex:0 0 auto}
-.save-api-row label{margin:0;cursor:pointer;font-size:12px;color:#333}
+
 .small{font-size:10px;color:var(--muted);line-height:1.45}
 .value{font-size:11px;color:#555}
 
@@ -216,6 +214,7 @@ button{cursor:pointer}
         <label>Notion APIキー</label>
         <div class="api-input-row">
           <input id="apiToken" type="password" autocomplete="off" placeholder="secret_..." style="flex:1">
+          <button class="btn icon" id="saveApiBtn" type="button" title="APIキーをこの端末に保存" aria-label="APIキーを保存">💾</button>
           <button class="btn icon" id="apiHelpBtn" type="button" title="APIキーについて" aria-label="APIキーの説明">?</button>
         </div>
       </div>
@@ -394,14 +393,9 @@ button{cursor:pointer}
       <li>漏れた疑いがある場合は、すぐに無効化・再発行してください。</li>
     </ul>
 
-    <div class="save-api-row" style="margin-top:14px">
-      <input id="saveApiToken" type="checkbox">
-      <label for="saveApiToken">APIキーをこの端末に保存する</label>
-    </div>
-    <p class="small">共有PC・公共端末ではOFF推奨。</p>
     <div id="saveConfirmArea" style="display:none;margin-top:10px">
       <div class="notice">
-        <strong>APIキーを端末に保存しますか？</strong>
+        <strong>APIキーをこの端末に保存しますか？</strong>
         <p class="help" style="margin-bottom:0">保存先は、この端末・このブラウザ・このサイト専用の Local Storage です。作者のサーバーには保存しません。ただし、同じサイト上で悪意あるJavaScriptが実行された場合などには読み取られる可能性があります。</p>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px">
@@ -409,7 +403,6 @@ button{cursor:pointer}
         <button class="btn primary" id="confirmSaveApiBtn" type="button" style="flex:1">理解して保存する</button>
       </div>
     </div>
-    <button class="btn" id="saveSettingsBtn">接続設定を保存</button>
     <button class="btn" id="clearTokenBtn">保存したAPIキーを削除</button>
   </div>
 </div>
@@ -439,7 +432,6 @@ const $=s=>document.querySelector(s);
 const SETTINGS='magiaMatrix.redesign.settings.v1';
 const STATE='magiaMatrix.redesign.state.v1';
 let items=[],selectedId=null,drag=null,cropWork=null;
-let apiSaveConfirmed=false;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
@@ -510,20 +502,15 @@ function displayImage(it){
   const d=appState().display||{};
   return it.baseImage || (d.useFavicon ? favicon(it.url) : '');
 }
-function saveSettings(){
-  if($('#saveApiToken').checked && !apiSaveConfirmed){
-    $('#saveConfirmArea').style.display='block';
-    return;
-  }
-  const keep=$('#saveApiToken').checked && apiSaveConfirmed;
+function saveSettings(saveToken=false){
   const s={
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
     propImage:$('#propImage').value.trim(),
     propColor:$('#propColor').value.trim(),
-    propOrder:$('#propOrder').value.trim(),
-    saveApiToken:keep,
-    apiToken:keep?$('#apiToken').value:''
+    propOrder:$('#propOrder')?$('#propOrder').value.trim():'',
+    saveApiToken:!!saveToken,
+    apiToken:saveToken?$('#apiToken').value:''
   };
   saveJSON(SETTINGS,s);
 }
@@ -532,18 +519,16 @@ function restoreSettings(){
   for(const k of ['notionSource','propName','propImage','propColor']){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
-  $('#saveApiToken').checked=!!s.saveApiToken;
-  if(s.saveApiToken){ apiSaveConfirmed=true; }
   if(s.saveApiToken&&s.apiToken)$('#apiToken').value=s.apiToken;
 }
 function clearToken(){
   const s=loadJSON(SETTINGS,{});
   s.apiToken='';s.saveApiToken=false;saveJSON(SETTINGS,s);
-  $('#apiToken').value='';$('#saveApiToken').checked=false;
+  $('#apiToken').value='';
 }
 
 async function loadNotion(){
-  saveSettings();
+  saveSettings(false);
   const cfg=loadJSON(SETTINGS,{});
   const token=$('#apiToken').value.trim();
   if(!cfg.notionSource||!token){alert('Notion API・データベースURL/IDを入力してください。');return}
@@ -815,36 +800,38 @@ $('#apiHelpBtn').onclick=e=>{
   e.stopPropagation();
   $('#helpModal').classList.add('open');
 };
-$('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 
-$('#saveApiToken').addEventListener('change',e=>{
+$('#saveApiBtn').onclick=e=>{
+  e.preventDefault();
   e.stopPropagation();
-  if(e.target.checked && !apiSaveConfirmed){
-    $('#saveConfirmArea').style.display='block';
-  }else if(!e.target.checked){
-    $('#saveConfirmArea').style.display='none';
-    apiSaveConfirmed=false;
+  if(!$('#apiToken').value.trim()){
+    alert('先にNotion APIキーを入力してください。');
+    return;
   }
-});
+  $('#helpModal').classList.add('open');
+  $('#saveConfirmArea').style.display='block';
+};
 
 $('#cancelSaveApiBtn').onclick=e=>{
   e.preventDefault();
-  $('#saveApiToken').checked=false;
-  apiSaveConfirmed=false;
   $('#saveConfirmArea').style.display='none';
 };
 
 $('#confirmSaveApiBtn').onclick=e=>{
   e.preventDefault();
-  apiSaveConfirmed=true;
-  $('#saveApiToken').checked=true;
+  saveSettings(true);
   $('#saveConfirmArea').style.display='none';
-  saveSettings();
+  $('#helpModal').classList.remove('open');
+  $('#connectionStatus').textContent='APIキーを端末保存しました';
 };
 
+$('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 
 
-$('#saveSettingsBtn').onclick=saveSettings;
+
+
+
+
 $('#clearTokenBtn').onclick=clearToken;
 $('#closeDrawer').onclick=()=>$('#drawer').classList.remove('open');
 $('#saveItemBtn').onclick=saveItem;
