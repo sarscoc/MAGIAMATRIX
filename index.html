@@ -24,7 +24,7 @@ button{cursor:pointer}
 }
 
 
-.header-wrap.collapsed .header-mini{height:30px;padding:0 6px}
+
 .header-wrap.collapsed .header-toggle{white-space:nowrap}
 .header-mini{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
 .header-mini-left{display:flex;align-items:center;gap:8px}
@@ -152,7 +152,7 @@ button{cursor:pointer}
 .source-name{font-size:11px;font-weight:700;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .stage-shell{padding:10px;min-width:0;min-height:0;height:100%;overflow:hidden}
-.stage{
+.stage{position:relative;
   height:100%;min-height:0;background:#fff;border:1px solid var(--line);border-radius:14px;
   box-shadow:var(--shadow);display:grid;grid-template-columns:1fr var(--settings);overflow:hidden;position:relative
 }
@@ -365,7 +365,7 @@ button{cursor:pointer}
   .splitter{display:block}
   .library{max-height:220px;border-right:0;border-bottom:1px solid var(--line)}
   .icon-list{grid-template-columns:repeat(5,1fr)}
-  .stage{height:72vh;min-height:520px;grid-template-columns:1fr 150px}
+  .stage{position:relative;height:72vh;min-height:520px;grid-template-columns:minmax(0,1fr)}
 }
 
 .settings{
@@ -442,8 +442,8 @@ button{cursor:pointer}
   gap:5px;
 }
 .display-settings-body .group.wide{grid-column:1/-1}
-.settings.collapsed-display .display-settings-body{display:none}
-.settings.collapsed-display .display-toggle{transform:rotate(-90deg)}
+
+
 .icon-editor-panel{
   margin-top:7px!important;
   padding-top:7px!important;
@@ -481,14 +481,8 @@ button{cursor:pointer}
   border-right:0 !important;
   border-radius:0 !important;
 }
-.header-wrap.collapsed .header-mini-left{
-  display:flex !important;
-}
-.header-wrap.collapsed .header-mini{
-  height:30px !important;
-  min-height:30px !important;
-  padding:0 8px !important;
-}
+
+
 .header-wrap.collapsed .header-toggle{
   white-space:nowrap;
 }
@@ -512,6 +506,262 @@ button{cursor:pointer}
   padding-bottom:0 !important;
   border-top-width:0 !important;
   pointer-events:none;
+}
+
+
+.library-page-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  padding:6px 7px;
+  border-bottom:1px solid #e7e9eb;
+  background:#fbfcfc;
+  flex:0 0 auto;
+}
+.library-page-tab{
+  height:28px;
+  border:1px solid #dfe3e6;
+  background:#fff;
+  border-radius:7px;
+  font-size:9.5px;
+  color:#626a71;
+  cursor:pointer;
+  font-weight:700;
+}
+.library-page-tab.active{
+  background:var(--soft);
+  border-color:var(--accent);
+  color:#34424b;
+}
+.library-page{display:none;min-height:0;flex:1;overflow:hidden}
+.library-page.active{display:flex;flex-direction:column}
+.past-template-grid{
+  padding:8px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:8px;
+  overflow:auto;
+  align-content:start;
+}
+.past-template-grid .template-tab{
+  width:100%;
+  max-width:none;
+  display:block;
+  padding:6px;
+  text-align:left;
+}
+.past-template-grid .template-tab-thumb{
+  width:100%;
+  height:76px;
+  display:block;
+  object-fit:cover;
+  margin-bottom:5px;
+  border-radius:5px;
+}
+.past-template-grid .template-tab-name{
+  display:block;
+  max-width:none;
+  font-size:9px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+
+.settings{
+  position:absolute !important;
+  top:12px;
+  right:12px;
+  width:240px !important;
+  min-width:240px !important;
+  max-height:calc(100% - 24px);
+  overflow-y:auto;
+  z-index:25;
+  border:1px solid rgba(214,220,224,.95) !important;
+  border-radius:14px !important;
+  background:rgba(255,255,255,.95) !important;
+  box-shadow:0 14px 34px rgba(25,35,45,.14),0 3px 10px rgba(25,35,45,.08);
+  backdrop-filter:blur(14px);
+  padding:8px !important;
+  transform-origin:top right;
+  transition:opacity .16s ease,transform .16s ease,visibility .16s ease;
+}
+.settings.floating-closed{
+  opacity:0;
+  transform:translateY(-6px) scale(.98);
+  visibility:hidden;
+  pointer-events:none;
+}
+.settings-menu-btn{
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:26;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(214,220,224,.95);
+  border-radius:10px;
+  background:rgba(255,255,255,.95);
+  box-shadow:0 8px 22px rgba(25,35,45,.12);
+  backdrop-filter:blur(12px);
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  color:#4d565d;
+  transition:.15s ease;
+}
+.settings-menu-btn:hover{transform:translateY(-1px);background:#fff}
+.settings:not(.floating-closed) + .settings-menu-btn{
+  opacity:0;
+  pointer-events:none;
+}
+.settings-close-btn{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border:1px solid #dfe3e6;
+  border-radius:7px;
+  background:#fff;
+  cursor:pointer;
+  font-size:13px;
+  color:#667078;
+}
+.display-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);
+  padding-bottom:6px;
+}
+
+
+.header-wrap{
+  position:relative;
+  width:100% !important;
+  overflow:visible;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap .header-mini{
+  height:30px;
+  min-height:30px;
+  transition:height .22s ease,min-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap.collapsed{
+  height:0 !important;
+  min-height:0 !important;
+  border-bottom:0 !important;
+  overflow:visible !important;
+}
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border:0 !important;
+  pointer-events:none;
+}
+
+.header-wrap.collapsed .header-toggle{
+  position:absolute !important;
+  top:4px !important;
+  right:8px !important;
+  z-index:50;
+  opacity:1 !important;
+  pointer-events:auto !important;
+  transform:none !important;
+  margin:0 !important;
+  height:26px !important;
+}
+
+
+.header-wrap{
+  position:relative;
+  width:100% !important;
+  overflow:visible;
+}
+.header-wrap .header{
+  max-height:76px;
+  opacity:1;
+  padding-top:6px;
+  padding-bottom:6px;
+  transition:max-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap .header-mini{
+  height:30px;
+  min-height:30px;
+  transition:height .22s ease,min-height .22s ease,opacity .16s ease,padding .22s ease;
+}
+.header-wrap.collapsed{
+  height:0 !important;
+  min-height:0 !important;
+  border-bottom:0 !important;
+  overflow:visible !important;
+}
+.header-wrap.collapsed .header{
+  max-height:0 !important;
+  height:0 !important;
+  opacity:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border:0 !important;
+  pointer-events:none;
+}
+.header-wrap.collapsed .header-mini{
+  height:0 !important;
+  min-height:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  border:0 !important;
+  opacity:0 !important;
+  pointer-events:none;
+}
+.header-wrap.collapsed .header-toggle{
+  position:absolute !important;
+  top:4px !important;
+  right:8px !important;
+  z-index:50;
+  opacity:1 !important;
+  pointer-events:auto !important;
+  transform:none !important;
+  margin:0 !important;
+  height:26px !important;
+}
+
+
+.stage{
+  grid-template-columns:minmax(0,1fr) !important;
+}
+.canvas{
+  grid-column:1 !important;
+  width:100%;
+  min-width:0;
+}
+.settings,
+.settings-menu-btn{
+  grid-column:auto !important;
+  grid-row:auto !important;
+}
+.settings-menu-btn{
+  right:10px !important;
+  top:10px !important;
+  margin:0 !important;
+  max-width:calc(100% - 20px);
+}
+.settings{
+  right:10px !important;
+  top:10px !important;
+  max-width:calc(100% - 20px) !important;
 }
 
 </style>
@@ -582,15 +832,16 @@ button{cursor:pointer}
         <div class="library-title">アイコン</div>
         <div class="library-count" id="libraryCount">0件</div>
       </div>
-
-      <div class="template-tabs-wrap">
-        <div class="template-tabs-label">過去テンプレ</div>
-        <div class="template-tabs" id="templateTabs">
-          <div class="template-tab-empty">まだありません</div>
-        </div>
       </div>
 
-      <div class="library-loading" id="libraryLoading">
+      
+      <div class="library-page-tabs">
+        <button class="library-page-tab active" id="showIconsTab" type="button">アイコン</button>
+        <button class="library-page-tab" id="showTemplatesTab" type="button">過去テンプレ</button>
+      </div>
+      <div class="library-page active" id="iconsPage">
+
+        <div class="library-loading" id="libraryLoading">
         <div class="loading-inner">
           <div class="loading-spinner" aria-hidden="true"></div>
           <div class="loading-text">キャラクターを読み込み中…</div>
@@ -598,6 +849,13 @@ button{cursor:pointer}
       </div>
       <div class="icon-list" id="iconList">
         <div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>
+      </div>
+      <div class="library-page" id="templatesPage">
+        <div class="past-template-grid" id="templateTabs">
+          <div class="template-tab-empty">まだありません</div>
+        </div>
+      </div>
+
       </div>
     </aside>
     <div class="splitter" id="splitter" title="ドラッグして幅を変更"></div>
@@ -612,14 +870,13 @@ button{cursor:pointer}
               <span class="small">画像・アイコン配置・補足をテンプレごとに保存します</span>
             </div>
           </div>
-          <div class="canvas-guide">テンプレ画像の上にアイコンを配置</div>
           <div class="template-meta" id="templateMeta">テンプレ未読込</div>
         </div>
 
         <aside class="settings" id="settings"> 
           <div class="display-head">
             <div class="display-head-title">表示設定</div>
-            <button class="display-toggle" id="displaySettingsToggle" type="button" title="表示設定を開閉">⌄</button>
+            <button class="settings-close-btn" id="displaySettingsToggle" type="button" title="閉じる">×</button>
           </div>
           <div class="display-settings-body" id="displaySettingsBody">
 
@@ -717,6 +974,7 @@ button{cursor:pointer}
 
           
         </aside>
+        <button class="settings-menu-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
       </div>
     </section>
   </div>
@@ -912,6 +1170,20 @@ function saveLoadedCache(){
   };
   saveJSON(CACHE,payload);
 }
+
+function showLibraryPage(which){
+  const icons=which==='icons';
+  $('#iconsPage').classList.toggle('active',icons);
+  $('#templatesPage').classList.toggle('active',!icons);
+  $('#showIconsTab').classList.toggle('active',icons);
+  $('#showTemplatesTab').classList.toggle('active',!icons);
+  localStorage.setItem('magiaMatrix.libraryPage',which);
+}
+function restoreLibraryPage(){
+  const page=localStorage.getItem('magiaMatrix.libraryPage')||'icons';
+  showLibraryPage(page);
+}
+
 function restoreLoadedCache(){
   const c=loadJSON(CACHE,null);
   if(!c?.items?.length)return false;
@@ -1145,7 +1417,7 @@ async function renderTemplateTabs(){
     nm.className='template-tab-name';
     nm.textContent=rec.name||'保存テンプレ';
     b.append(im,nm);
-    b.onclick=()=>switchTemplate(rec.id);
+    b.onclick=async()=>{await switchTemplate(rec.id);showLibraryPage('icons')};
     box.appendChild(b);
   });
 }
@@ -1257,6 +1529,12 @@ function renderLibrary(){
     const card=document.createElement('div');card.className='source-card';card.draggable=true;
     card.draggable=false;
     card.addEventListener('pointerdown',e=>startLibraryDrag(e,it,card));
+    card.addEventListener('dblclick',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openDrawer(it.id);
+      openCropForSelected();
+    });
     const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
     const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';av.append(im);
     const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
@@ -1338,6 +1616,12 @@ function renderPlaced(){
       cm.style.fontSize=(disp.commentFontSize??10)+'px';
       applyTextOutline(cm);cm.textContent=l.comment;el.append(cm)}
     el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
+    el.addEventListener('dblclick',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openDrawer(it.id);
+      openCropForSelected();
+    });
     c.append(el);
   });
   document.querySelectorAll('.placed-name,.placed-comment').forEach(applyTextOutline);
@@ -1399,6 +1683,7 @@ function resetIconEditor(){
   if($('#iconEditorEmpty'))$('#iconEditorEmpty').style.display='block';
 }
 function openDrawer(id){
+  toggleDisplayPanel(true);
   selectedId=id;
   const it=items.find(x=>x.id===id);if(!it)return;
   const l=appState().items[id]||{};
@@ -1444,6 +1729,21 @@ function updateCrop(){
   img.style.transform=`translate(${x}%,${y}%) scale(${z})`;
   $('#cropZoom').value=z;
 }
+
+function openCropForSelected(){
+  if(!selectedId)return;
+  const it=items.find(x=>x.id===selectedId);if(!it)return;
+  const l=appState().items[selectedId]||{};
+  const shape=currentIconShape();
+  if(shape==='original')return;
+  cropWork={...(l.crop||{x:0,y:0,zoom:1})};
+  $('#cropImg').src=displayImage(it)||'';
+  const guide=$('#cropStage .crop-circle');
+  guide?.classList.toggle('mode-square',shape==='square');
+  $('#cropModal').classList.add('open');
+  requestAnimationFrame(updateCrop);
+}
+
 function setupCrop(){
   const stage=$('#cropStage');
   const img=$('#cropImg');
@@ -1547,17 +1847,14 @@ function setupHeaderToggle(){
   const btn=$('#headerToggle');
   if(!wrap||!btn)return;
 
-  const apply=(closed)=>{
+  const apply=closed=>{
     wrap.classList.toggle('collapsed',closed);
     btn.textContent=closed?'接続設定を開く':'接続設定を閉じる';
     localStorage.setItem('magiaMatrix.header.collapsed',closed?'1':'0');
   };
 
   apply(localStorage.getItem('magiaMatrix.header.collapsed')==='1');
-
-  btn.onclick=()=>{
-    apply(!wrap.classList.contains('collapsed'));
-  };
+  btn.onclick=()=>apply(!wrap.classList.contains('collapsed'));
 }
 
 
@@ -1588,14 +1885,15 @@ function syncFaviconDisplayState(){
 /* display settings */
 
 function restoreDisplayPanelState(){
-  const closed=localStorage.getItem('magiaMatrix.displayPanel.closed')==='1';
-  $('#settings').classList.toggle('collapsed-display',closed);
+  const closed=localStorage.getItem('magiaMatrix.displayPanel.closed')!=='0';
+  $('#settings').classList.toggle('floating-closed',closed);
 }
-function toggleDisplayPanel(){
+function toggleDisplayPanel(forceOpen=null){
   const panel=$('#settings');
-  const next=!panel.classList.contains('collapsed-display');
-  panel.classList.toggle('collapsed-display',next);
-  localStorage.setItem('magiaMatrix.displayPanel.closed',next?'1':'0');
+  const isClosed=panel.classList.contains('floating-closed');
+  const open=forceOpen===null ? isClosed : !!forceOpen;
+  panel.classList.toggle('floating-closed',!open);
+  localStorage.setItem('magiaMatrix.displayPanel.closed',open?'0':'1');
 }
 
 function restoreDisplay(){
@@ -1660,7 +1958,10 @@ $('#saveItemBtn').onclick=saveItem;
 $('#cropBtn').onclick=openCrop;
 $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
-$('#displaySettingsToggle').onclick=toggleDisplayPanel;
+$('#displaySettingsToggle').onclick=()=>toggleDisplayPanel(false);
+$('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
+$('#showIconsTab').onclick=()=>showLibraryPage('icons');
+$('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
 $('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
 $('#clearTemplateBtn').onclick=clearCurrentTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
@@ -1669,6 +1970,7 @@ $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 
 restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();syncImageFieldWithFavicon();setupTemplateDrop();setupCrop();
 restoreDisplayPanelState();
+restoreLibraryPage();
 syncImageFieldWithFavicon();
 
 restoreLoadedCache();
