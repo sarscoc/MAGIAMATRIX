@@ -309,23 +309,14 @@ button{cursor:pointer}
 .value{font-size:11px;color:#555}
 
 
-.icon-editor-panel{
-  margin-top:10px;padding-top:10px;border-top:1px solid #e4e7e9
-}
-.icon-editor-panel .section-title{
-  font-size:11px;font-weight:800;color:#343b41;margin-bottom:8px
-}
-.icon-editor-panel .drawer-head{
-  position:static;padding:0 0 7px;border:0;background:transparent
-}
-.icon-editor-panel .preview{margin:2px auto 7px}
-.icon-editor-panel textarea{
-  width:100%;min-height:68px;border:1px solid var(--line);border-radius:8px;
-  padding:7px;resize:vertical;font-size:10px
-}
-.icon-editor-panel input[type=color]{width:100%;height:32px;border:1px solid var(--line);border-radius:7px}
-.icon-editor-panel label{display:block;font-size:10px;color:#666;margin:8px 0 3px}
-.icon-editor-panel .check{display:flex;align-items:center;gap:5px}
+
+
+
+
+
+
+
+
 
 /* drawer */
 .drawer{
@@ -344,7 +335,7 @@ button{cursor:pointer}
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;z-index:60;padding:18px}
 .modal.open{display:grid}
-.modalbox{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:18px}
+.modalbox{overflow:visible;width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:18px}
 .notice{background:#f3f7f9;border:1px solid #d9e3e8;border-radius:12px;padding:11px;font-size:12px;line-height:1.55}
 .notice ul{padding-left:18px}
 .help{font-size:12px;line-height:1.6;color:#666}
@@ -444,19 +435,10 @@ button{cursor:pointer}
 .display-settings-body .group.wide{grid-column:1/-1}
 
 
-.icon-editor-panel{
-  margin-top:7px!important;
-  padding-top:7px!important;
-  border-top:1px solid #e4e7e9!important;
-}
-.icon-editor-panel .section-title{
-  font-size:9.5px!important;
-  margin-bottom:5px!important;
-}
-.icon-editor-panel .preview{
-  width:46px;height:46px;margin:2px auto 5px;
-}
-.icon-editor-panel textarea{min-height:52px}
+
+
+
+
 
 
 #cropStage img{
@@ -1175,6 +1157,76 @@ button{cursor:pointer}
   letter-spacing:.08em;
 }
 
+
+/* icon editor modal */
+.icon-edit-box{
+  width:min(420px,calc(100vw - 24px));
+}
+.icon-edit-preview-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  margin:6px 0 10px;
+}
+.icon-edit-name{
+  font-size:12px;
+  font-weight:800;
+  color:#343b41;
+  text-align:center;
+}
+.icon-edit-box textarea{
+  width:100%;
+  min-height:84px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px;
+  resize:vertical;
+  font-size:11px;
+}
+.icon-edit-box .small,
+.icon-edit-box .help{
+  display:block !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.45 !important;
+  max-height:none !important;
+}
+.icon-edit-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+
+/* help / descriptions must not be clipped */
+.help,
+.small,
+.notice p{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  max-height:none !important;
+}
+
+/* crop */
+#cropStage{
+  position:relative;
+  overflow:hidden;
+  touch-action:none;
+  user-select:none;
+}
+#cropStage img{
+  user-select:none;
+  -webkit-user-drag:none;
+  cursor:grab;
+  touch-action:none;
+  transform-origin:center center;
+  will-change:transform;
+}
+#cropStage.dragging img{cursor:grabbing}
+
 </style>
 </head>
 <body>
@@ -1358,32 +1410,6 @@ button{cursor:pointer}
 
           
           </div>
-
-<div class="group icon-editor-panel" id="iconEditorPanel">
-            <div class="section-title">アイコン編集</div>
-            <div id="iconEditorEmpty" class="help">テンプレ上のアイコンを選ぶと、ここで編集できます。</div>
-            <div id="iconEditorContent" style="display:none">
-
-  <div class="drawer-head">
-    <strong>アイコン編集</strong>
-  </div>
-  <div class="preview"><img id="detailImg"></div>
-  <div id="detailName" style="text-align:center;font-weight:800"></div>
-
-  <label>コメント</label>
-  <textarea id="commentInput" placeholder="サイト上だけのコメント"></textarea>
-              <p class="small">補足はテンプレ上でアイコンの上に表示されます。</p>
-
-  <label>個別文字色</label>
-  <input type="color" id="itemColor" value="#202327">
-  <label class="check"><input id="useItemColor" type="checkbox"> このアイコンだけ個別色を使う</label>
-
-  <div style="display:flex;gap:8px;margin-top:14px">
-    <button class="btn" id="cropBtn" style="flex:1">切り抜き</button>
-    <button class="btn primary" id="saveItemBtn" style="flex:1">保存</button>
-  </div>
-
-            </div>
           </div>
 
           <div class="group">
@@ -1476,6 +1502,38 @@ button{cursor:pointer}
   </div>
 </div>
 
+
+
+<div class="modal" id="iconEditModal">
+  <div class="modalbox icon-edit-box">
+    <div class="drawer-head">
+      <strong>アイコン編集</strong>
+      <button class="iconbtn" id="iconEditClose" type="button">×</button>
+    </div>
+
+    <div class="icon-edit-preview-wrap">
+      <div class="preview" id="iconEditPreview">
+        <img id="detailImg" alt="">
+      </div>
+      <div id="detailName" class="icon-edit-name"></div>
+    </div>
+
+    <label>補足</label>
+    <textarea id="commentInput" placeholder="補足を入力"></textarea>
+    <p class="small">補足はテンプレ上のアイコン付近に表示され、入力中にリアルタイム反映されます。</p>
+
+    <label class="check">
+      <input id="useItemColor" type="checkbox">
+      個別文字色を使う
+    </label>
+    <input id="itemColor" type="color" value="#202327">
+
+    <div class="icon-edit-actions">
+      <button class="btn" id="cropBtn" type="button">切り抜き</button>
+      <button class="btn primary" id="saveItemBtn" type="button">保存</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="cropModal">
   <div class="modalbox" style="width:min(520px,100%)">
@@ -1918,8 +1976,13 @@ async function renderTemplateTabs(){
 
     const nm=document.createElement('span');
     nm.className='template-tab-name';
-    nm.textContent=rec.name||'保存テンプレ';
-    open.appendChild(nm);
+    if(rec.name && rec.name!=='保存テンプレ'){
+      nm.textContent=rec.name;
+    }else{
+      const ts=rec.createdAt||rec.updatedAt||rec.uploadedAt;
+      nm.textContent=ts ? new Date(ts).toLocaleString() : '';
+    }
+    if(nm.textContent)open.appendChild(nm);
 
     // Open the saved template IN EDIT MODE.
     // Do not jump to the character/icon page.
@@ -2119,12 +2182,6 @@ function renderLibrary(){
     const card=document.createElement('div');card.className='source-card';card.draggable=true;
     card.draggable=false;
     card.addEventListener('pointerdown',e=>startLibraryDrag(e,it,card));
-    card.addEventListener('dblclick',e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      openDrawer(it.id);
-      openCropForSelected();
-    });
     const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
     const display=appState().display||{};
     if(display.iconBorderUseTextColor){
@@ -2220,7 +2277,6 @@ function renderPlaced(){
       e.preventDefault();
       e.stopPropagation();
       openDrawer(it.id);
-      openCropForSelected();
     });
     c.append(el);
   });
@@ -2279,26 +2335,34 @@ function updateSelectedCommentRealtime(){
 
 function resetIconEditor(){
   selectedId=null;
-  if($('#iconEditorContent'))$('#iconEditorContent').style.display='none';
-  if($('#iconEditorEmpty'))$('#iconEditorEmpty').style.display='block';
+  $('#iconEditModal')?.classList.remove('open');
 }
 function openDrawer(id){
-  toggleDisplayPanel(true);
   selectedId=id;
-  const it=items.find(x=>x.id===id);if(!it)return;
+  const it=items.find(x=>x.id===id);
+  if(!it)return;
+
   const l=appState().items[id]||{};
-  $('#iconEditorEmpty').style.display='none';
-  $('#iconEditorContent').style.display='block';
-  $('#detailName').textContent=it.name;applyTextOutline($('#detailName'));
+  $('#detailName').textContent=it.name||'';
   $('#detailImg').src=displayImage(it)||'';
+
   const shape=currentIconShape();
-  applyShapeClass($('#detailImg').parentElement,shape);
-  if(shape!=='original')cropStyle($('#detailImg'),l.crop);else $('#detailImg').style.transform='';
+  applyShapeClass($('#iconEditPreview'),shape);
+
+  if(shape!=='original'){
+    cropStyle($('#detailImg'),l.crop);
+  }else{
+    $('#detailImg').style.transform='';
+  }
+
+  $('#commentInput').value=l.comment||'';
+  $('#useItemColor').checked=!!l.useColor;
+  $('#itemColor').value=safeColor(l.color)||'#202327';
+
   $('#cropBtn').disabled=shape==='original';
   $('#cropBtn').textContent=shape==='original'?'切り抜きなし':'切り抜き';
-  $('#commentInput').value=l.comment||'';
-  $('#itemColor').value=safeColor(l.color)||'#202327';
-  $('#useItemColor').checked=!!l.useColor;
+
+  $('#iconEditModal').classList.add('open');
 }
 function saveItem(){
   if(!selectedId)return;
@@ -2323,23 +2387,31 @@ function openCrop(){
 function updateCrop(){
   if(!cropWork)return;
   const img=$('#cropImg');
-  const z=Number(cropWork.zoom||1);
-  const x=Number(cropWork.x||0);
-  const y=Number(cropWork.y||0);
-  img.style.transform=`translate(${x}%,${y}%) scale(${z})`;
-  $('#cropZoom').value=z;
+  img.style.transform=`translate(${Number(cropWork.x||0)}%,${Number(cropWork.y||0)}%) scale(${Number(cropWork.zoom||1)})`;
+  $('#cropZoom').value=Number(cropWork.zoom||1);
 }
 
 function openCropForSelected(){
   if(!selectedId)return;
-  const it=items.find(x=>x.id===selectedId);if(!it)return;
-  const l=appState().items[selectedId]||{};
+  const it=items.find(x=>x.id===selectedId);
+  if(!it)return;
+
   const shape=currentIconShape();
   if(shape==='original')return;
-  cropWork={...(l.crop||{x:0,y:0,zoom:1})};
+
+  const l=appState().items[selectedId]||{};
+  cropWork={
+    x:Number(l.crop?.x||0),
+    y:Number(l.crop?.y||0),
+    zoom:Number(l.crop?.zoom||1)
+  };
+
   $('#cropImg').src=displayImage(it)||'';
+  $('#cropZoom').value=cropWork.zoom;
+
   const guide=$('#cropStage .crop-circle');
-  guide?.classList.toggle('mode-square',shape==='square');
+  if(guide)guide.classList.toggle('mode-square',shape==='square');
+
   $('#cropModal').classList.add('open');
   requestAnimationFrame(updateCrop);
 }
@@ -2349,14 +2421,12 @@ function setupCrop(){
   const img=$('#cropImg');
   const zoom=$('#cropZoom');
 
-  // Zoom slider
   zoom.addEventListener('input',()=>{
     if(!cropWork)return;
     cropWork.zoom=Number(zoom.value);
     updateCrop();
   });
 
-  // Direct image drag inside crop stage
   let dragging=false;
   let startX=0,startY=0,startCropX=0,startCropY=0;
 
@@ -2365,8 +2435,6 @@ function setupCrop(){
     const r=stage.getBoundingClientRect();
     const dx=(e.clientX-startX)/Math.max(1,r.width)*100;
     const dy=(e.clientY-startY)/Math.max(1,r.height)*100;
-
-    // crop x/y are translation percentages. Clamp so image can't be thrown absurdly far away.
     cropWork.x=Math.max(-100,Math.min(100,startCropX+dx));
     cropWork.y=Math.max(-100,Math.min(100,startCropY+dy));
     updateCrop();
@@ -2561,10 +2629,11 @@ $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 $('#clearTokenBtn').onclick=clearToken;
 $('#clearLoadedCacheBtn').onclick=clearLoadedCache;
 $('#saveItemBtn').onclick=saveItem;
-$('#cropBtn').onclick=openCrop;
+$('#cropBtn').onclick=openCropForSelected;
 $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
 $('#displaySettingsToggle').onclick=()=>toggleDisplayPanel(false);
+$('#iconEditClose').onclick=()=>$('#iconEditModal').classList.remove('open');
 $('#showIconsTab').onclick=()=>showLibraryPage('icons');
 $('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
 $('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
