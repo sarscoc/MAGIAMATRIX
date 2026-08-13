@@ -1227,6 +1227,35 @@ button{cursor:pointer}
 }
 #cropStage.dragging img{cursor:grabbing}
 
+
+.template-meta{display:none!important}
+.stage-toolbar-actions{display:flex;align-items:center;gap:6px}
+#exportImageBtn{height:28px;padding:0 10px;font-size:9px;border-radius:7px;white-space:nowrap}
+.placed{overflow:visible!important}
+.placed-comment{display:block!important;visibility:visible!important;opacity:1!important;z-index:30!important;pointer-events:none!important}
+.placed-comment.comment-top{left:50%!important;bottom:calc(100% + 8px)!important}
+.placed-comment.comment-side{left:calc(100% + 9px)!important;top:50%!important}
+.placed-name{z-index:29!important}
+.icon-edit-box{width:min(460px,calc(100vw - 24px));max-height:calc(100vh - 28px);overflow-y:auto!important}
+.icon-edit-box .crop-stage{width:min(320px,100%);aspect-ratio:1/1;margin-left:auto;margin-right:auto}
+.icon-edit-name{margin:8px 0 5px;text-align:center;font-size:12px;font-weight:800}
+.icon-edit-box textarea{width:100%;min-height:84px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical;font-size:11px}
+.icon-edit-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+#manualColorWrap{margin-top:8px} #manualColorWrap input[type=color]{width:100%;height:34px}
+#cropStage{position:relative;overflow:hidden;touch-action:none;user-select:none}
+#cropStage img{user-select:none;-webkit-user-drag:none;cursor:grab;touch-action:none;transform-origin:center center;will-change:transform}
+#cropStage.dragging img{cursor:grabbing}
+.help,.small,.notice p,.modalbox .help,.modalbox .small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-height:none!important;line-height:1.45!important}
+
+
+.stage-footer,
+.template-footer,
+.canvas-footer,
+.bottom-bar,
+.template-actions-bottom{
+  display:none!important;
+}
+
 </style>
 </head>
 <body>
@@ -1328,7 +1357,10 @@ button{cursor:pointer}
     <section class="stage-shell">
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
-        <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
+        <div class="stage-toolbar-actions">
+          <button class="btn" id="exportImageBtn" type="button">画像を保存</button>
+          <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
+        </div>
       </div>
       <div class="stage">
         <div class="canvas" id="canvas">
@@ -1336,10 +1368,9 @@ button{cursor:pointer}
           <div class="template-drop" id="templateDrop">
             <div>
               <strong>テンプレ画像をここへドロップ</strong><br>
-              <span class="small">画像・アイコン配置・補足をテンプレごとに保存します</span>
+              <span class="small">画像・アイコン配置・コメントをテンプレごとに保存します</span>
             </div>
           </div>
-          <div class="template-meta" id="templateMeta">テンプレ未読込</div>
         </div>
 
         <aside class="settings" id="settings"> 
@@ -1372,15 +1403,15 @@ button{cursor:pointer}
           <div class="group wide">
             <label>文字色</label>
             <input id="globalTextColor" type="color" value="#202327">
-            <label class="check"><input id="useNotionColor" type="checkbox" checked> Notionの文字色があれば優先</label>
+            <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> 個別文字色を使う</label>
             <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
           </div>
           <div class="group wide">
-            <label>補足文字サイズ <span id="commentFontSizeValue">10</span>px</label>
+            <label>コメント文字サイズ <span id="commentFontSizeValue">10</span>px</label>
             <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
           </div>
           <div class="group">
-            <label>補足の位置</label>
+            <label>コメントの位置</label>
             <select id="commentPosition">
               <option value="top">上</option>
               <option value="side">横</option>
@@ -1412,10 +1443,6 @@ button{cursor:pointer}
           </div>
           </div>
 
-          <div class="group">
-            <button class="btn" id="clearTemplateBtn" style="width:100%">このテンプレを削除</button>
-          </div>
-
           
         </aside>
         <button class="settings-menu-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -1440,22 +1467,6 @@ button{cursor:pointer}
 
     <h3>接続について</h3>
     <p class="help">利用者はWorker URLを入力する必要はありません。中継先は公開者がこのHTML内に一度だけ設定します。利用者が入力するのはNotion APIキーとデータベースURL/IDです。</p>
-
-    <h3>Cloudflare「Workers & Pages」について</h3>
-    <p class="help">これは、Notionとこのページの間をつなぐ小さな中継処理（Worker）を公開するために使います。利用者が毎回設定するものではなく、<strong>このサイトの公開者が最初に1回だけ作ります。</strong></p>
-    <ol class="help">
-      <li>Cloudflareにログインします。</li>
-      <li>ダッシュボードの <strong>Workers &amp; Pages</strong> を開きます。</li>
-      <li><strong>Create application</strong> を選びます。</li>
-      <li><strong>Create Worker</strong> を選び、Workerを作成して <strong>Deploy</strong> します。</li>
-      <li>作成したWorkerのコード編集画面で、このセットに入っている <code>worker.js</code> の内容へ置き換えて、もう一度Deployします。</li>
-      <li><code>https://xxxxx.workers.dev</code> のようなURLが発行されます。</li>
-      <li>そのURLを <code>index.html</code> 内の <code>WORKER_URL</code> に1回だけ設定します。</li>
-    </ol>
-    <div class="notice">
-      <strong>利用者はWorkers &amp; Pagesを触りません</strong>
-      <p class="help" style="margin-bottom:0">公開者側でWorker URLをHTMLへ埋め込んでおけば、利用者が入力するのはNotion APIキーとデータベースURL/IDだけです。</p>
-    </div>
 
     <h3>読み込みデータの保存</h3>
     <p class="help">Notionから一度読み込んだ名前・ページURL・文字色・整列番号などは、このブラウザに自動保存します。次回は前回データを自動表示するので、毎回APIを読む必要はありません。「読込 / 更新」を押したときだけ最新のNotionデータを取り直します。</p>
@@ -1504,50 +1515,33 @@ button{cursor:pointer}
 
 
 
+
 <div class="modal" id="iconEditModal">
   <div class="modalbox icon-edit-box">
     <div class="drawer-head">
       <strong>アイコン編集</strong>
       <button class="iconbtn" id="iconEditClose" type="button">×</button>
     </div>
-
-    <div class="icon-edit-preview-wrap">
-      <div class="preview" id="iconEditPreview">
-        <img id="detailImg" alt="">
-      </div>
-      <div id="detailName" class="icon-edit-name"></div>
-    </div>
-
-    <label>補足</label>
-    <textarea id="commentInput" placeholder="補足を入力"></textarea>
-    <p class="small">補足はテンプレ上のアイコン付近に表示され、入力中にリアルタイム反映されます。</p>
-
-    <label class="check">
-      <input id="useItemColor" type="checkbox">
-      個別文字色を使う
-    </label>
-    <input id="itemColor" type="color" value="#202327">
-
-    <div class="icon-edit-actions">
-      <button class="btn" id="cropBtn" type="button">切り抜き</button>
-      <button class="btn primary" id="saveItemBtn" type="button">保存</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="cropModal">
-  <div class="modalbox" style="width:min(520px,100%)">
-    <strong>アイコン切り抜き</strong>
-    <div class="crop-stage" id="cropStage" style="margin-top:12px">
-      <img id="cropImg">
+    <div class="crop-stage" id="cropStage" style="margin-top:10px">
+      <img id="cropImg" alt="">
       <div class="crop-circle"></div>
     </div>
-    <label style="display:block;margin-top:10px">拡大</label>
-    <input id="zoomRange" type="range" min=".5" max="3" step=".01" value="1" style="width:100%">
-    <p class="small">画像をドラッグして位置を調整できます。</p>
-    <div style="display:flex;gap:8px">
-      <button class="btn" id="cropCancel" style="flex:1">キャンセル</button>
-      <button class="btn primary" id="cropSave" style="flex:1">この位置にする</button>
+    <div id="cropControls">
+      <label style="display:block;margin-top:9px">拡大</label>
+      <input id="cropZoom" type="range" min=".5" max="3" step=".01" value="1" style="width:100%">
+      <p class="small">画像をドラッグして切り抜き位置を調整できます。</p>
+    </div>
+    <div id="detailName" class="icon-edit-name"></div>
+    <label>コメント</label>
+    <textarea id="commentInput" placeholder="コメントを入力"></textarea>
+    <p class="small">入力中からテンプレ上へリアルタイムで反映されます。</p>
+    <div id="manualColorWrap">
+      <label>文字色</label>
+      <input id="itemColor" type="color" value="#202327">
+    </div>
+    <div class="icon-edit-actions">
+      <button class="btn" id="iconEditCancel" type="button">閉じる</button>
+      <button class="btn primary" id="saveItemBtn" type="button">保存</button>
     </div>
   </div>
 </div>
@@ -1565,7 +1559,7 @@ let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -1940,71 +1934,29 @@ async function createNewTemplate(){
 }
 
 async function renderTemplateTabs(){
-  const box=$('#templateTabs');
-  if(!box)return;
-  const recs=await tplAllRecords();
-  box.innerHTML='';
-
-  if(!recs.length){
-    box.innerHTML='<div class="template-tab-empty">まだありません</div>';
-    return;
+  const box=$('#templateTabs');if(!box)return;
+  const all=await tplAllRecords(),states=templateStates(),current=currentTemplateId(),meaningful=[];
+  for(const rec of all){
+    const st=states[rec.id]?.items||{};
+    const hasData=Object.values(st).some(v=>v?.placed||String(v?.comment||'').trim());
+    if(rec.dataUrl||hasData)meaningful.push(rec);
+    else if(rec.id!==current){await tplDeleteRecord(rec.id);delete states[rec.id]}
   }
-
-  const current=currentTemplateId();
-
-  recs.forEach(rec=>{
-    const card=document.createElement('div');
-    card.className='template-card'+(rec.id===current?' active':'');
-    card.dataset.templateId=rec.id;
-
-    const open=document.createElement('button');
-    open.type='button';
-    open.className='template-tab'+(rec.id===current?' active':'');
-    open.title='このテンプレを編集';
-
-    if(rec.dataUrl){
-      const im=document.createElement('img');
-      im.className='template-tab-thumb';
-      im.src=rec.dataUrl;
-      open.appendChild(im);
-    }else{
-      const empty=document.createElement('div');
-      empty.className='template-tab-thumb template-empty-thumb';
-      empty.textContent='NO IMAGE';
-      open.appendChild(empty);
-    }
-
-    const nm=document.createElement('span');
-    nm.className='template-tab-name';
-    if(rec.name && rec.name!=='保存テンプレ'){
-      nm.textContent=rec.name;
-    }else{
-      const ts=rec.createdAt||rec.updatedAt||rec.uploadedAt;
-      nm.textContent=ts ? new Date(ts).toLocaleString() : '';
-    }
+  setTemplateStates(states);
+  box.innerHTML='';
+  if(!meaningful.length){box.innerHTML='<div class="template-tab-empty">まだありません</div>';return}
+  meaningful.forEach(rec=>{
+    const card=document.createElement('div');card.className='template-card'+(rec.id===current?' active':'');
+    const open=document.createElement('button');open.type='button';open.className='template-tab'+(rec.id===current?' active':'');open.title='このテンプレを編集';
+    if(rec.dataUrl){const im=document.createElement('img');im.className='template-tab-thumb';im.src=rec.dataUrl;open.appendChild(im)}
+    const nm=document.createElement('span');nm.className='template-tab-name';
+    const legacy=rec.name==='保存テンプレ'?'':(rec.name||'');
+    nm.textContent=legacy||(rec.createdAt?new Date(rec.createdAt).toLocaleString():'');
     if(nm.textContent)open.appendChild(nm);
-
-    // Open the saved template IN EDIT MODE.
-    // Do not jump to the character/icon page.
-    open.onclick=async e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      await switchTemplate(rec.id);
-    };
-
-    const del=document.createElement('button');
-    del.type='button';
-    del.className='template-delete-btn';
-    del.textContent='削除';
-    del.title='このテンプレを削除';
-    del.onclick=async e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      await deleteSavedTemplate(rec.id);
-    };
-
-    card.append(open,del);
-    box.appendChild(card);
+    open.onclick=async e=>{e.preventDefault();e.stopPropagation();await switchTemplate(rec.id)};
+    const del=document.createElement('button');del.type='button';del.className='template-delete-btn';del.textContent='削除';
+    del.onclick=async e=>{e.preventDefault();e.stopPropagation();await deleteSavedTemplate(rec.id)};
+    card.append(open,del);box.appendChild(card);
   });
 }
 
@@ -2014,7 +1966,7 @@ async function deleteSavedTemplate(id){
   const rec=await tplGetRecord(id);
   const name=rec?.name||'このテンプレ';
 
-  if(!window.confirm(`「${name}」を削除しますか？\n配置・補足・切り抜き・個別色も一緒に削除されます。`))return;
+  if(!window.confirm(`「${name}」を削除しますか？\n配置・コメント・切り抜き・個別色も一緒に削除されます。`))return;
 
   const wasCurrent=id===currentTemplateId();
 
@@ -2068,37 +2020,19 @@ async function switchTemplate(id){
 }
 
 function showTemplateRecord(rec){
-  const c=$('#canvas'),im=$('#templateImg'),meta=$('#templateMeta');
-  if(rec?.dataUrl){
-    im.src=rec.dataUrl;
-    c.classList.add('has-template');
-    meta.textContent=rec.name||'保存済みテンプレ';
-  }else{
-    im.removeAttribute('src');
-    c.classList.remove('has-template');
-    meta.textContent='テンプレ未読込';
-  }
+  const c=$('#canvas'),im=$('#templateImg');
+  if(rec?.dataUrl){im.src=rec.dataUrl;c.classList.add('has-template')}
+  else{im.removeAttribute('src');c.classList.remove('has-template')}
 }
 async function restoreTemplate(){
-  let id=currentTemplateId();
-  let rec=id ? await tplGetRecord(id) : null;
-
+  let id=currentTemplateId(),rec=id?await tplGetRecord(id):null;
   if(!rec){
-    const recs=await tplAllRecords();
-    if(recs.length){
-      rec=recs[0];
-      id=rec.id;
-      localStorage.setItem(TEMPLATE_CURRENT,id);
-    }
+    const recs=await tplAllRecords(),states=templateStates();
+    rec=recs.find(r=>{const st=states[r.id]?.items||{};return !!r.dataUrl||Object.values(st).some(v=>v?.placed||String(v?.comment||'').trim())})||null;
+    if(rec){id=rec.id;localStorage.setItem(TEMPLATE_CURRENT,id)}else localStorage.removeItem(TEMPLATE_CURRENT);
   }
-
-  if(rec){
-    showTemplateRecord(rec);
-    restoreTemplatePlacementState(id);
-  }else{
-    await createNewTemplate();
-  }
-
+  if(rec){showTemplateRecord(rec);restoreTemplatePlacementState(id)}
+  else{showTemplateRecord(null);renderLibrary();renderPlaced()}
   await renderTemplateTabs();
 }
 async function saveTemplateFile(file){
@@ -2185,7 +2119,7 @@ function renderLibrary(){
     const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
     const display=appState().display||{};
     if(display.iconBorderUseTextColor){
-      const sourceChosen=(display.useNotionColor&&it.color)||display.globalTextColor||'#202327';
+      const sourceChosen=(display.useIndividualTextColor!==false&&it.color)||display.globalTextColor||'#202327';
       av.classList.add('use-text-border');
       av.style.setProperty('--icon-border-color',sourceChosen);
     }
@@ -2258,7 +2192,7 @@ function renderPlaced(){
     const l=s.items?.[it.id];if(!l?.placed)return;
     const el=document.createElement('div');el.className='placed';el.dataset.id=it.id;
     el.style.left=(l.x??50)+'%';el.style.top=(l.y??50)+'%';
-    const chosen=(l.useColor&&safeColor(l.color))||(d.useNotionColor&&it.color)||d.globalTextColor||'#202327';
+    const chosen=(d.useIndividualTextColor!==false?(it.color||d.globalTextColor):(safeColor(l.color)||d.globalTextColor))||'#202327';
     el.style.color=chosen;
     const av=document.createElement('div');av.className='placed-avatar';applyShapeClass(av);
     if(d.iconBorderUseTextColor){
@@ -2267,7 +2201,7 @@ function renderPlaced(){
     }
     const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);el.append(av);
     if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
-    if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';applyTextOutline(cm);
+    if(d.showComment!==false&&String(l.comment||'').trim()){const cm=document.createElement('div');cm.className='placed-comment';applyTextOutline(cm);
       const disp=appState().display||{};
       cm.classList.add((disp.commentPosition||'top')==='side'?'comment-side':'comment-top');
       cm.style.fontSize=(disp.commentFontSize??10)+'px';
@@ -2339,140 +2273,117 @@ function resetIconEditor(){
 }
 function openDrawer(id){
   selectedId=id;
-  const it=items.find(x=>x.id===id);
-  if(!it)return;
-
+  const it=items.find(x=>x.id===id);if(!it)return;
   const l=appState().items[id]||{};
+  cropWork={x:Number(l.crop?.x||0),y:Number(l.crop?.y||0),zoom:Number(l.crop?.zoom||1)};
   $('#detailName').textContent=it.name||'';
-  $('#detailImg').src=displayImage(it)||'';
-
-  const shape=currentIconShape();
-  applyShapeClass($('#iconEditPreview'),shape);
-
-  if(shape!=='original'){
-    cropStyle($('#detailImg'),l.crop);
-  }else{
-    $('#detailImg').style.transform='';
-  }
-
+  $('#cropImg').src=displayImage(it)||'';
+  $('#cropZoom').value=cropWork.zoom;
   $('#commentInput').value=l.comment||'';
-  $('#useItemColor').checked=!!l.useColor;
-  $('#itemColor').value=safeColor(l.color)||'#202327';
-
-  $('#cropBtn').disabled=shape==='original';
-  $('#cropBtn').textContent=shape==='original'?'切り抜きなし':'切り抜き';
-
+  $('#itemColor').value=safeColor(l.color)||safeColor(it.color)||appState().display?.globalTextColor||'#202327';
+  const shape=currentIconShape();
+  const guide=$('#cropStage .crop-circle');
+  if(guide)guide.classList.toggle('mode-square',shape==='square');
+  $('#cropControls').style.display=shape==='original'?'none':'block';
+  $('#manualColorWrap').style.display=(appState().display?.useIndividualTextColor!==false)?'none':'block';
   $('#iconEditModal').classList.add('open');
+  requestAnimationFrame(updateCrop);
 }
 function saveItem(){
   if(!selectedId)return;
   mutate(s=>{
-    const l=s.items[selectedId];
-    l.comment=$('#commentInput').value;l.color=$('#itemColor').value;l.useColor=$('#useItemColor').checked;
+    const l=s.items[selectedId];if(!l)return;
+    l.comment=$('#commentInput').value;
+    l.crop={...(cropWork||l.crop||{x:0,y:0,zoom:1})};
+    if(s.display?.useIndividualTextColor===false)l.color=$('#itemColor').value;
   });
   const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
-  renderPlaced();openDrawer(selectedId);
+  renderPlaced();
+  $('#iconEditModal').classList.remove('open');
 }
 
-/* crop */
-function openCrop(){
-  if(!selectedId)return;const it=items.find(x=>x.id===selectedId),l=appState().items[selectedId];
-  cropWork={...(l.crop||{x:0,y:0,zoom:1})};$('#cropImg').src=displayImage(it)||'';$('#zoomRange').value=cropWork.zoom||1;
-  const shape=currentIconShape();
-  if(shape==='original')return;
-  const guide=$('#cropStage .crop-circle');
-  guide.classList.toggle('mode-square',shape==='square');
-  $('#cropModal').classList.add('open');requestAnimationFrame(updateCrop);
-}
+/* crop/editor */
 function updateCrop(){
   if(!cropWork)return;
-  const img=$('#cropImg');
-  img.style.transform=`translate(${Number(cropWork.x||0)}%,${Number(cropWork.y||0)}%) scale(${Number(cropWork.zoom||1)})`;
+  $('#cropImg').style.transform=`translate(${Number(cropWork.x||0)}%,${Number(cropWork.y||0)}%) scale(${Number(cropWork.zoom||1)})`;
   $('#cropZoom').value=Number(cropWork.zoom||1);
 }
-
-function openCropForSelected(){
-  if(!selectedId)return;
-  const it=items.find(x=>x.id===selectedId);
-  if(!it)return;
-
-  const shape=currentIconShape();
-  if(shape==='original')return;
-
-  const l=appState().items[selectedId]||{};
-  cropWork={
-    x:Number(l.crop?.x||0),
-    y:Number(l.crop?.y||0),
-    zoom:Number(l.crop?.zoom||1)
-  };
-
-  $('#cropImg').src=displayImage(it)||'';
-  $('#cropZoom').value=cropWork.zoom;
-
-  const guide=$('#cropStage .crop-circle');
-  if(guide)guide.classList.toggle('mode-square',shape==='square');
-
-  $('#cropModal').classList.add('open');
-  requestAnimationFrame(updateCrop);
-}
-
 function setupCrop(){
-  const stage=$('#cropStage');
-  const img=$('#cropImg');
-  const zoom=$('#cropZoom');
-
-  zoom.addEventListener('input',()=>{
-    if(!cropWork)return;
-    cropWork.zoom=Number(zoom.value);
-    updateCrop();
-  });
-
-  let dragging=false;
-  let startX=0,startY=0,startCropX=0,startCropY=0;
-
+  const stage=$('#cropStage'),img=$('#cropImg'),zoom=$('#cropZoom');
+  zoom.addEventListener('input',()=>{if(!cropWork)return;cropWork.zoom=Number(zoom.value);updateCrop()});
+  let moving=false,startX=0,startY=0,startCropX=0,startCropY=0;
   const move=e=>{
-    if(!dragging||!cropWork)return;
+    if(!moving||!cropWork)return;
     const r=stage.getBoundingClientRect();
-    const dx=(e.clientX-startX)/Math.max(1,r.width)*100;
-    const dy=(e.clientY-startY)/Math.max(1,r.height)*100;
-    cropWork.x=Math.max(-100,Math.min(100,startCropX+dx));
-    cropWork.y=Math.max(-100,Math.min(100,startCropY+dy));
+    cropWork.x=Math.max(-100,Math.min(100,startCropX+(e.clientX-startX)/Math.max(1,r.width)*100));
+    cropWork.y=Math.max(-100,Math.min(100,startCropY+(e.clientY-startY)/Math.max(1,r.height)*100));
     updateCrop();
   };
-
-  const end=()=>{
-    if(!dragging)return;
-    dragging=false;
-    stage.classList.remove('dragging');
-    window.removeEventListener('pointermove',move);
-    window.removeEventListener('pointerup',end);
-    window.removeEventListener('pointercancel',end);
-  };
-
+  const end=()=>{moving=false;stage.classList.remove('dragging');window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end)};
   stage.addEventListener('pointerdown',e=>{
-    if(!cropWork)return;
+    if(!cropWork||currentIconShape()==='original')return;
     if(e.button!=null&&e.button!==0)return;
-    e.preventDefault();
-    dragging=true;
-    startX=e.clientX;
-    startY=e.clientY;
-    startCropX=Number(cropWork.x||0);
-    startCropY=Number(cropWork.y||0);
+    e.preventDefault();moving=true;startX=e.clientX;startY=e.clientY;startCropX=Number(cropWork.x||0);startCropY=Number(cropWork.y||0);
     stage.classList.add('dragging');
-    stage.setPointerCapture?.(e.pointerId);
     window.addEventListener('pointermove',move,{passive:true});
     window.addEventListener('pointerup',end,{once:true});
     window.addEventListener('pointercancel',end,{once:true});
   });
-
   img.addEventListener('dragstart',e=>e.preventDefault());
 }
-function saveCrop(){
-  mutate(s=>s.items[selectedId].crop=cropWork);
-  const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
-  $('#cropModal').classList.remove('open');renderPlaced();openDrawer(selectedId);
-}
 
+
+async function exportLoadImage(src){
+  return new Promise((resolve,reject)=>{
+    const im=new Image();im.crossOrigin='anonymous';im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('image'));im.src=src;
+  });
+}
+function exportWrapText(ctx,text,maxWidth){
+  const lines=[];let line='';
+  for(const ch of String(text||'')){if(ch==='\n'){lines.push(line);line='';continue}const test=line+ch;if(line&&ctx.measureText(test).width>maxWidth){lines.push(line);line=ch}else line=test}
+  if(line||!lines.length)lines.push(line);return lines;
+}
+function exportRoundedRect(ctx,x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();
+}
+function exportText(ctx,text,x,y,color,outline,font){
+  ctx.save();ctx.font=font;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  if(outline){ctx.lineWidth=Math.max(3,parseFloat(font)*.20);ctx.strokeStyle='#fff';ctx.strokeText(text,x,y)}
+  ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();
+}
+async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
+  const im=await exportLoadImage(src);ctx.save();
+  if(shape==='circle'){ctx.beginPath();ctx.arc(cx,cy,size/2,0,Math.PI*2);ctx.clip()}
+  else if(shape==='square'){ctx.beginPath();ctx.rect(cx-size/2,cy-size/2,size,size);ctx.clip()}
+  const contain=shape==='original',base=contain?Math.min(size/im.naturalWidth,size/im.naturalHeight):Math.max(size/im.naturalWidth,size/im.naturalHeight);
+  const zoom=contain?1:Number(crop?.zoom||1),w=im.naturalWidth*base*zoom,h=im.naturalHeight*base*zoom,dx=contain?0:Number(crop?.x||0)/100*size,dy=contain?0:Number(crop?.y||0)/100*size;
+  ctx.drawImage(im,cx-w/2+dx,cy-h/2+dy,w,h);ctx.restore();
+  if(shape!=='original'){ctx.save();ctx.lineWidth=Math.max(2,size*.035);ctx.strokeStyle=border||'#fff';if(shape==='circle'){ctx.beginPath();ctx.arc(cx,cy,size/2-ctx.lineWidth/2,0,Math.PI*2);ctx.stroke()}else ctx.strokeRect(cx-size/2+ctx.lineWidth/2,cy-size/2+ctx.lineWidth/2,size-ctx.lineWidth,size-ctx.lineWidth);ctx.restore()}
+}
+async function exportFinalImage(){
+  const rec=await tplGetRecord(currentTemplateId());if(!rec?.dataUrl){alert('先にテンプレ画像を入れてください。');return}
+  let bg;try{bg=await exportLoadImage(rec.dataUrl)}catch{alert('テンプレ画像を読み込めませんでした。');return}
+  const out=document.createElement('canvas');out.width=bg.naturalWidth||1920;out.height=bg.naturalHeight||1080;
+  const ctx=out.getContext('2d');ctx.drawImage(bg,0,0,out.width,out.height);
+  const state=appState(),d=state.display||{},view=$('#canvas').getBoundingClientRect(),scale=out.width/Math.max(1,view.width),iconSize=(d.iconSize||72)*scale,outline=(d.textOutline||'off')==='on';
+  for(const it of items){
+    const l=state.items?.[it.id];if(!l?.placed)continue;const imageSrc=displayImage(it);if(!imageSrc)continue;
+    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,color=(d.useIndividualTextColor!==false?(it.color||d.globalTextColor):(safeColor(l.color)||d.globalTextColor))||'#202327',border=d.iconBorderUseTextColor?color:'#fff';
+    try{await exportDrawIcon(ctx,imageSrc,l.crop,cx,cy,iconSize,d.iconShape||'circle',border)}catch{}
+    if(d.showName!==false){const fs=Math.max(11,13*scale);exportText(ctx,it.name,cx,cy+iconSize/2+fs,color,outline,`800 ${fs}px sans-serif`)}
+    if(d.showComment!==false&&String(l.comment||'').trim()){
+      const fs=Math.max(10,(d.commentFontSize||10)*scale);ctx.font=`600 ${fs}px sans-serif`;
+      const lines=exportWrapText(ctx,l.comment,Math.min(out.width*.28,180*scale)),lineH=fs*1.35,padX=7*scale,padY=5*scale,boxW=Math.max(...lines.map(t=>ctx.measureText(t).width),20)+padX*2,boxH=lines.length*lineH+padY*2;
+      let bx,by;if((d.commentPosition||'top')==='side'){bx=cx+iconSize/2+9*scale;by=cy-boxH/2}else{bx=cx-boxW/2;by=cy-iconSize/2-boxH-8*scale}
+      ctx.save();ctx.fillStyle='rgba(255,255,255,.90)';ctx.strokeStyle='rgba(210,214,218,.95)';ctx.lineWidth=Math.max(1,scale);exportRoundedRect(ctx,bx,by,boxW,boxH,7*scale);ctx.fill();ctx.stroke();
+      lines.forEach((line,i)=>exportText(ctx,line,bx+boxW/2,by+padY+lineH*(i+.5),color,outline,`600 ${fs}px sans-serif`));ctx.restore();
+    }
+  }
+  try{
+    const blob=await new Promise(resolve=>out.toBlob(resolve,'image/png'));if(!blob)throw new Error('blob');
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='MAGIA-MATRIX.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch{alert('画像保存に失敗しました。外部画像がある場合は再読み込みしてから試してください。')}
+}
 
 /* left/right resizable panes */
 function applyPaneWidth(px){
@@ -2568,19 +2479,19 @@ function toggleDisplayPanel(forceOpen=null){
 function restoreDisplay(){
   const d=appState().display||{};
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentPosition').value=d.commentPosition||'top';$('#textOutline').value=d.textOutline||'off';
-  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
-  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
+  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor!==false;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
   const update=()=>{
     mutate(s=>s.display={
       iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
+      globalTextColor:$('#globalTextColor').value,useIndividualTextColor:$('#useIndividualTextColor').checked,iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
     });
     $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
   };
-  ['iconSize','iconShape','commentFontSize','commentPosition','textOutline','showName','showComment','globalTextColor','useNotionColor','iconBorderUseTextColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+  ['iconSize','iconShape','commentFontSize','commentPosition','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
 $('#loadBtn').onclick=loadNotion;
@@ -2629,17 +2540,14 @@ $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 $('#clearTokenBtn').onclick=clearToken;
 $('#clearLoadedCacheBtn').onclick=clearLoadedCache;
 $('#saveItemBtn').onclick=saveItem;
-$('#cropBtn').onclick=openCropForSelected;
-$('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
-$('#cropSave').onclick=saveCrop;
 $('#displaySettingsToggle').onclick=()=>toggleDisplayPanel(false);
-$('#iconEditClose').onclick=()=>$('#iconEditModal').classList.remove('open');
+$('#iconEditClose').onclick=$('#iconEditCancel').onclick=()=>$('#iconEditModal').classList.remove('open');
 $('#showIconsTab').onclick=()=>showLibraryPage('icons');
 $('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
 $('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
 $('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
+$('#exportImageBtn').onclick=exportFinalImage;
 $('#newTemplateBtn').onclick=createNewTemplate;
-$('#clearTemplateBtn').onclick=clearCurrentTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 window.addEventListener('beforeunload',()=>saveCurrentTemplateState());
 
