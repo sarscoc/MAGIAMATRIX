@@ -957,6 +957,38 @@ button{cursor:pointer}
   padding:7px !important;
 }
 
+
+.splitter{
+  cursor:col-resize !important;
+  touch-action:none !important;
+  user-select:none !important;
+}
+.splitter:hover,
+.splitter.dragging{
+  background:#dcecf6 !important;
+}
+
+
+.placed-avatar.use-text-border,
+.source-avatar.use-text-border{
+  border:2px solid var(--icon-border-color,currentColor) !important;
+  box-sizing:border-box;
+}
+.placed-avatar.mode-original.use-text-border{
+  border-radius:8px !important;
+}
+
+
+.header-wrap:not(.collapsed){
+  flex:0 0 auto !important;
+  display:block !important;
+}
+.header-wrap:not(.collapsed) .header-mini,
+.header-wrap:not(.collapsed) .header{
+  display:flex !important;
+  visibility:visible !important;
+}
+
 </style>
 </head>
 <body>
@@ -1100,6 +1132,7 @@ button{cursor:pointer}
             <label>文字色</label>
             <input id="globalTextColor" type="color" value="#202327">
             <label class="check"><input id="useNotionColor" type="checkbox" checked> Notionの文字色があれば優先</label>
+            <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
           </div>
           <div class="group wide">
             <label>補足文字サイズ <span id="commentFontSizeValue">10</span>px</label>
@@ -1284,7 +1317,7 @@ let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',textOutline:'off',fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -1745,6 +1778,12 @@ function renderLibrary(){
       openCropForSelected();
     });
     const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
+    const display=appState().display||{};
+    if(display.iconBorderUseTextColor){
+      const sourceChosen=(display.useNotionColor&&it.color)||display.globalTextColor||'#202327';
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',sourceChosen);
+    }
     const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';av.append(im);
     const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
     card.append(av,nm);list.append(card);
@@ -1817,6 +1856,10 @@ function renderPlaced(){
     const chosen=(l.useColor&&safeColor(l.color))||(d.useNotionColor&&it.color)||d.globalTextColor||'#202327';
     el.style.color=chosen;
     const av=document.createElement('div');av.className='placed-avatar';applyShapeClass(av);
+    if(d.iconBorderUseTextColor){
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',chosen);
+    }
     const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);el.append(av);
     if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
     if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';applyTextOutline(cm);
@@ -2020,8 +2063,9 @@ function applyPaneWidth(px){
   const ws=$('#workspace');
   if(!ws)return;
   const total=ws.getBoundingClientRect().width||window.innerWidth;
-  const width=Math.max(180,Math.min(Math.max(220,total-320),Number(px)||300));
-  ws.style.gridTemplateColumns=`${width}px 12px minmax(0,1fr)`;
+  const maxLeft=Math.max(220,total-320);
+  const width=Math.max(180,Math.min(maxLeft,Number(px)||300));
+  ws.style.setProperty('grid-template-columns',`${width}px 12px minmax(0,1fr)`,'important');
 }
 function restorePaneWidth(){
   applyPaneWidth(appState().libraryWidth||300);
@@ -2061,10 +2105,10 @@ function setupHeaderToggle(){
   const apply=closed=>{
     wrap.classList.toggle('collapsed',closed);
     btn.textContent=closed?'接続設定を開く':'接続設定を閉じる';
-    localStorage.setItem('magiaMatrix.header.collapsed',closed?'1':'0');
+    localStorage.setItem('magiaMatrix.header.collapsed.v2',closed?'1':'0');
   };
 
-  apply(localStorage.getItem('magiaMatrix.header.collapsed')==='1');
+  apply(localStorage.getItem('magiaMatrix.header.collapsed.v2')==='1');
   btn.onclick=()=>apply(!wrap.classList.contains('collapsed'));
 }
 
@@ -2111,18 +2155,18 @@ function restoreDisplay(){
   const d=appState().display||{};
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentPosition').value=d.commentPosition||'top';$('#textOutline').value=d.textOutline||'off';
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
-  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
   const update=()=>{
     mutate(s=>s.display={
       iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
+      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
     });
     $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
   };
-  ['iconSize','iconShape','commentFontSize','commentPosition','textOutline','showName','showComment','globalTextColor','useNotionColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+  ['iconSize','iconShape','commentFontSize','commentPosition','textOutline','showName','showComment','globalTextColor','useNotionColor','iconBorderUseTextColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
 $('#loadBtn').onclick=loadNotion;
