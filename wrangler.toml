@@ -1,0 +1,9 @@
+name = "magia-matrix-proxy"
+main = "worker.js"
+compatibility_date = "2026-08-13"
+
+[vars]
+# 最初のテストだけ "*" でも動きます。
+# 公開後は GitHub Pages のURL等に置き換えるのを推奨:
+# ALLOWED_ORIGIN = "https://YOURNAME.github.io"
+ALLOWED_ORIGIN = "*"
