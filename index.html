@@ -11,17 +11,22 @@
   --sidebar:300px;--settings:190px;--icon-size:72px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
-.app{min-height:100vh;display:flex;flex-direction:column}
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* header */
+.header-wrap{background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid #e7e9eb;z-index:30}
+.header-mini{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
+.header-mini-left{display:flex;align-items:center;gap:8px}
+.header-toggle{height:24px;border:1px solid #dfe3e6;background:#fff;border-radius:6px;padding:0 8px;font-size:10px;color:#596168}
 .header{
-  min-height:58px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
-  border-bottom:1px solid #e7e9eb;display:flex;align-items:center;gap:10px;
-  padding:8px 12px;position:sticky;top:0;z-index:30
+  min-height:0;background:transparent;border-top:1px solid #f0f1f2;display:flex;align-items:center;gap:10px;
+  padding:7px 10px;overflow:hidden;max-height:96px;opacity:1;transition:max-height .18s ease,opacity .15s ease,padding .18s ease
 }
+.header-wrap.collapsed .header{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-top:0}
+
 .brand{
   font-weight:780;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
   color:#353b40;white-space:nowrap;margin-right:2px
@@ -59,10 +64,10 @@ button{cursor:pointer}
 .status{font-size:10px;color:var(--muted);white-space:nowrap}
 
 /* main layout */
-.workspace{display:grid;grid-template-columns:var(--sidebar) 7px 1fr;min-height:calc(100vh - 58px)}
+.workspace{display:grid;grid-template-columns:var(--sidebar) 7px 1fr;flex:1;min-height:0;overflow:hidden}
 .library{
-  background:#fff;border-right:1px solid var(--line);padding:12px;min-height:0;
-  display:flex;flex-direction:column
+  background:#fff;border-right:1px solid var(--line);padding:12px;min-height:0;height:100%;
+  display:flex;flex-direction:column;overflow:hidden
 }
 .library-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .library-title{font-size:13px;font-weight:800}
@@ -76,7 +81,7 @@ button{cursor:pointer}
 .splitter:hover::after,.splitter.dragging::after{background:var(--accent);width:4px;left:1px}
 .source-card{
   border:1px solid var(--line);background:#fff;border-radius:12px;padding:7px 5px;text-align:center;
-  user-select:none;cursor:grab;min-width:0;transition:.12s
+  user-select:none;cursor:grab;min-width:0;transition:.12s;touch-action:none
 }
 .source-card:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(0,0,0,.07)}
 .source-card:active{cursor:grabbing}
@@ -86,9 +91,9 @@ button{cursor:pointer}
 .source-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .source-name{font-size:11px;font-weight:700;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.stage-shell{padding:10px;min-width:0}
+.stage-shell{padding:10px;min-width:0;min-height:0;height:100%;overflow:hidden}
 .stage{
-  height:calc(100vh - 82px);min-height:620px;background:#fff;border:1px solid var(--line);border-radius:14px;
+  height:100%;min-height:0;background:#fff;border:1px solid var(--line);border-radius:14px;
   box-shadow:var(--shadow);display:grid;grid-template-columns:1fr var(--settings);overflow:hidden;position:relative
 }
 .canvas{
@@ -108,6 +113,10 @@ button{cursor:pointer}
   position:absolute;left:14px;bottom:12px;font-size:11px;color:#888;background:rgba(255,255,255,.85);
   border:1px solid #e2e4e6;border-radius:999px;padding:5px 9px;pointer-events:none
 }
+
+
+.drag-ghost{position:fixed;z-index:1000;pointer-events:none;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;overflow:hidden;background:#eee;border:3px solid #fff;box-shadow:0 7px 22px rgba(0,0,0,.22);opacity:.94}
+.drag-ghost img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* placed items */
 .placed{
@@ -187,9 +196,15 @@ button{cursor:pointer}
 </head>
 <body>
 <div class="app">
+  <div class="header-wrap" id="headerWrap">
+  <div class="header-mini">
+    <div class="header-mini-left">
+      <div class="brand">MAGIA MATRIX</div>
+      <span class="status" id="connectionStatus">Notion接続</span>
+    </div>
+    <button class="header-toggle" id="headerToggle">接続設定を閉じる ▲</button>
+  </div>
   <header class="header">
-    <div class="brand">MAGIA MATRIX</div>
-
     <div class="connect-grid">
       <div class="field">
         <label>Notion API</label>
@@ -218,6 +233,7 @@ button{cursor:pointer}
       <button class="btn primary" id="loadBtn">読込</button>
     </div>
   </header>
+</div>
 
   <div class="workspace" id="workspace">
     <aside class="library" id="libraryPane">
@@ -256,6 +272,11 @@ button{cursor:pointer}
           <div class="group">
             <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
             <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
+          </div>
+
+          <div class="group">
+            <label class="check"><input id="useFavicon" type="checkbox"> 画像がないときfaviconを使う</label>
+            <p class="small">OFFなら画像プロパティまたはNotionページアイコンだけを使います。</p>
           </div>
 
           <div class="group">
@@ -398,7 +419,7 @@ let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -422,6 +443,14 @@ function propText(p){
   if(p.type==='number')return p.number==null?'':String(p.number);
   if(p.type==='formula')return p.formula?.string??p.formula?.number??'';
   return '';
+}
+function propNumber(p){
+  if(!p)return null;
+  if(p.type==='number')return typeof p.number==='number'?p.number:null;
+  const t=propText(p).trim();
+  if(!t)return null;
+  const n=Number(t);
+  return Number.isFinite(n)?n:null;
 }
 function propImage(p){
   if(!p)return '';
@@ -447,11 +476,16 @@ function normalize(page,cfg){
   const P=page.properties||{};
   const name=propText(P[cfg.propName])||'名称未設定';
   const url=page.url||'';
-  const image=propImage(P[cfg.propImage])||pageIcon(page)||favicon(url);
+  const baseImage=propImage(P[cfg.propImage])||pageIcon(page)||'';
   const color=safeColor(propText(P[cfg.propColor]));
-  return {id:page.id,name,url,image,color};
+  const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
+  return {id:page.id,name,url,baseImage,color,order};
 }
 
+function displayImage(it){
+  const d=appState().display||{};
+  return it.baseImage || (d.useFavicon ? favicon(it.url) : '');
+}
 function saveSettings(){
   const keep=$('#saveApiToken').checked;
   const s={
@@ -459,6 +493,7 @@ function saveSettings(){
     propName:$('#propName').value.trim(),
     propImage:$('#propImage').value.trim(),
     propColor:$('#propColor').value.trim(),
+    propOrder:$('#propOrder').value.trim(),
     saveApiToken:keep,
     apiToken:keep?$('#apiToken').value:''
   };
@@ -499,7 +534,17 @@ async function loadNotion(){
       v.local=s.items[v.id];
       return v;
     });
+    if(cfg.propOrder){
+      items.sort((a,b)=>{
+        const an=a.order, bn=b.order;
+        if(an==null && bn==null) return 0;
+        if(an==null) return 1;
+        if(bn==null) return -1;
+        return an-bn;
+      });
+    }
     saveState(s);renderLibrary();renderPlaced();
+    $('#connectionStatus').textContent=items.length+'件 読込済み';
   }catch(e){
     alert('Notionの読み込みに失敗しました：'+e.message);
   }
@@ -544,13 +589,47 @@ function renderLibrary(){
   if(!items.length){list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';return}
   items.forEach(it=>{
     const card=document.createElement('div');card.className='source-card';card.draggable=true;
-    card.addEventListener('dragstart',e=>{e.dataTransfer.setData('application/x-magia-item',it.id);e.dataTransfer.effectAllowed='copyMove'});
-    card.onclick=()=>openDrawer(it.id);
+    card.draggable=false;
+    card.addEventListener('pointerdown',e=>startLibraryDrag(e,it,card));
     const av=document.createElement('div');av.className='source-avatar';
-    const im=document.createElement('img');im.src=it.image||'';im.onerror=()=>im.style.display='none';av.append(im);
+    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';av.append(im);
     const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
     card.append(av,nm);list.append(card);
   });
+}
+function startLibraryDrag(e,it,card){
+  if(e.button!=null && e.button!==0)return;
+  let moved=false;
+  const ghost=document.createElement('div');
+  ghost.className='drag-ghost';
+  const gi=document.createElement('img');
+  gi.src=displayImage(it)||'';
+  ghost.appendChild(gi);
+  ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
+  document.body.appendChild(ghost);
+  card.setPointerCapture?.(e.pointerId);
+
+  const move=ev=>{
+    moved=true;
+    ghost.style.left=ev.clientX+'px';
+    ghost.style.top=ev.clientY+'px';
+  };
+  const up=ev=>{
+    ghost.remove();
+    card.releasePointerCapture?.(ev.pointerId);
+    card.removeEventListener('pointermove',move);
+    card.removeEventListener('pointerup',up);
+    card.removeEventListener('pointercancel',up);
+    const c=$('#canvas').getBoundingClientRect();
+    if(ev.clientX>=c.left&&ev.clientX<=c.right&&ev.clientY>=c.top&&ev.clientY<=c.bottom){
+      placeItem(it.id,(ev.clientX-c.left)/c.width*100,(ev.clientY-c.top)/c.height*100);
+    }else if(!moved){
+      openDrawer(it.id);
+    }
+  };
+  card.addEventListener('pointermove',move);
+  card.addEventListener('pointerup',up);
+  card.addEventListener('pointercancel',up);
 }
 function placeItem(id,x,y){
   mutate(s=>{
@@ -576,7 +655,7 @@ function renderPlaced(){
     const chosen=(l.useColor&&safeColor(l.color))||(d.useNotionColor&&it.color)||d.globalTextColor||'#202327';
     el.style.color=chosen;
     const av=document.createElement('div');av.className='placed-avatar';
-    const im=document.createElement('img');im.src=it.image||'';im.onerror=()=>im.style.display='none';cropStyle(im,l.crop);av.append(im);el.append(av);
+    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';cropStyle(im,l.crop);av.append(im);el.append(av);
     if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
     if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';cm.textContent=l.comment;el.append(cm)}
     el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
@@ -603,7 +682,7 @@ function startPlacedDrag(e,id,el){
 function openDrawer(id){
   selectedId=id;const it=items.find(x=>x.id===id);if(!it)return;
   const l=appState().items[id]||{};
-  $('#detailName').textContent=it.name;$('#detailImg').src=it.image||'';cropStyle($('#detailImg'),l.crop);
+  $('#detailName').textContent=it.name;$('#detailImg').src=displayImage(it)||'';cropStyle($('#detailImg'),l.crop);
   $('#commentInput').value=l.comment||'';$('#itemColor').value=safeColor(l.color)||'#202327';$('#useItemColor').checked=!!l.useColor;
   $('#drawer').classList.add('open');
 }
@@ -620,7 +699,7 @@ function saveItem(){
 /* crop */
 function openCrop(){
   if(!selectedId)return;const it=items.find(x=>x.id===selectedId),l=appState().items[selectedId];
-  cropWork={...(l.crop||{x:0,y:0,zoom:1})};$('#cropImg').src=it.image||'';$('#zoomRange').value=cropWork.zoom||1;
+  cropWork={...(l.crop||{x:0,y:0,zoom:1})};$('#cropImg').src=displayImage(it)||'';$('#zoomRange').value=cropWork.zoom||1;
   $('#cropModal').classList.add('open');requestAnimationFrame(updateCrop);
 }
 function updateCrop(){
@@ -671,23 +750,34 @@ function setupSplitter(){
   });
 }
 
+function setupHeaderToggle(){
+  const wrap=$('#headerWrap'),btn=$('#headerToggle');
+  const saved=localStorage.getItem('magiaMatrix.headerCollapsed')==='1';
+  if(saved){wrap.classList.add('collapsed');btn.textContent='接続設定を開く ▼';}
+  btn.onclick=()=>{
+    const collapsed=wrap.classList.toggle('collapsed');
+    btn.textContent=collapsed?'接続設定を開く ▼':'接続設定を閉じる ▲';
+    localStorage.setItem('magiaMatrix.headerCollapsed',collapsed?'1':'0');
+  };
+}
+
 /* display settings */
 function restoreDisplay(){
   const d=appState().display||{};
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
-  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;$('#useFavicon').checked=!!d.useFavicon;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
   const update=()=>{
     mutate(s=>s.display={
       iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,fontFamily:$('#fontFamily').value
+      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,useFavicon:$('#useFavicon').checked,fontFamily:$('#fontFamily').value
     });
     $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
   };
-  ['iconSize','showName','showComment','globalTextColor','useNotionColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+  ['iconSize','showName','showComment','globalTextColor','useNotionColor','useFavicon','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
 $('#loadBtn').onclick=loadNotion;
@@ -702,7 +792,7 @@ $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
 $('#cropSave').onclick=saveCrop;
 $('#clearTemplateBtn').onclick=async()=>{await tplSet('');showTemplate('')};
 
-restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupTemplateDrop();setupCrop();
+restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();setupTemplateDrop();setupCrop();
 tplGet().then(showTemplate);
 </script>
 </body>
