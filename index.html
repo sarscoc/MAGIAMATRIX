@@ -17,7 +17,17 @@ button{cursor:pointer}
 .app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* header */
-.header-wrap{background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid #e7e9eb;z-index:30}
+.header-wrap{
+  width:100%;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
+  border-bottom:1px solid #e7e9eb;z-index:30;
+  transition:width .18s ease,border-radius .18s ease
+}
+.header-wrap.collapsed{
+  width:max-content;max-width:100%;border-right:1px solid #e7e9eb;border-radius:0 0 9px 0
+}
+.header-wrap.collapsed .header-mini-left{display:none}
+.header-wrap.collapsed .header-mini{height:30px;padding:0 6px}
+.header-wrap.collapsed .header-toggle{white-space:nowrap}
 .header-mini{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
 .header-mini-left{display:flex;align-items:center;gap:8px}
 .header-toggle{height:24px;border:1px solid #dfe3e6;background:#fff;border-radius:6px;padding:0 8px;font-size:10px;color:#596168}
@@ -158,6 +168,19 @@ button{cursor:pointer}
 .favicon-check input{width:auto;height:auto}
 .template-meta{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(255,255,255,.88);border:1px solid #e0e3e5;border-radius:7px;padding:4px 7px;font-size:9px;color:#737b82;pointer-events:none}
 
+
+.text-outline{
+  text-shadow:
+    -1px -1px 0 #fff,
+     0   -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  0   0 #fff,
+     1px  0   0 #fff,
+    -1px  1px 0 #fff,
+     0    1px 0 #fff,
+     1px  1px 0 #fff;
+}
+
 /* placed items */
 .placed{
   position:absolute;transform:translate(-50%,-50%);z-index:6;text-align:center;touch-action:none;user-select:none;
@@ -176,8 +199,33 @@ button{cursor:pointer}
 }
 .placed.selected .placed-avatar{outline:3px solid var(--accent)}
 
+
+.placed-avatar.mode-original{
+  border-radius:0;overflow:visible;background:transparent;border:0;box-shadow:none
+}
+.placed-avatar.mode-original img{object-fit:contain}
+.placed-avatar.mode-circle{border-radius:50%;overflow:hidden}
+.placed-avatar.mode-square{border-radius:0;overflow:hidden}
+
+.source-avatar.mode-original{border-radius:0;overflow:visible;background:transparent}
+.source-avatar.mode-original img{object-fit:contain}
+.source-avatar.mode-circle{border-radius:50%;overflow:hidden}
+.source-avatar.mode-square{border-radius:0;overflow:hidden}
+
+.drag-ghost.mode-original{border-radius:0;overflow:visible;background:transparent;border:0;box-shadow:none}
+.drag-ghost.mode-original img{object-fit:contain}
+.drag-ghost.mode-circle{border-radius:50%;overflow:hidden}
+.drag-ghost.mode-square{border-radius:0;overflow:hidden}
+
+.preview.mode-original{border-radius:0;overflow:visible;background:transparent}
+.preview.mode-original img{object-fit:contain}
+.preview.mode-circle{border-radius:50%;overflow:hidden}
+.preview.mode-square{border-radius:0;overflow:hidden}
+
+.crop-circle.mode-square{border-radius:0}
+
 /* settings rail inside image area */
-.settings{
+.settings{overflow-y:auto;min-height:0;
   border-left:1px solid var(--line);background:rgba(255,255,255,.96);padding:12px;overflow:auto;z-index:10
 }
 .settings h3{font-size:12px;margin:0 0 12px}
@@ -192,6 +240,25 @@ button{cursor:pointer}
 
 .small{font-size:10px;color:var(--muted);line-height:1.45}
 .value{font-size:11px;color:#555}
+
+
+.icon-editor-panel{
+  margin-top:10px;padding-top:10px;border-top:1px solid #e4e7e9
+}
+.icon-editor-panel .section-title{
+  font-size:11px;font-weight:800;color:#343b41;margin-bottom:8px
+}
+.icon-editor-panel .drawer-head{
+  position:static;padding:0 0 7px;border:0;background:transparent
+}
+.icon-editor-panel .preview{margin:2px auto 7px}
+.icon-editor-panel textarea{
+  width:100%;min-height:68px;border:1px solid var(--line);border-radius:8px;
+  padding:7px;resize:vertical;font-size:10px
+}
+.icon-editor-panel input[type=color]{width:100%;height:32px;border:1px solid var(--line);border-radius:7px}
+.icon-editor-panel label{display:block;font-size:10px;color:#666;margin:8px 0 3px}
+.icon-editor-panel .check{display:flex;align-items:center;gap:5px}
 
 /* drawer */
 .drawer{
@@ -227,7 +294,7 @@ button{cursor:pointer}
   .header{min-height:auto;align-items:flex-start;flex-wrap:wrap;padding:8px}
   .brand{font-size:11px;padding-top:6px}
   .connect-grid{display:flex;width:max-content;gap:5px}
-  .workspace{grid-template-columns:1fr}
+  .workspace{grid-template-columns:260px 12px minmax(0,1fr)}
   .splitter{display:block}
   .library{max-height:220px;border-right:0;border-bottom:1px solid var(--line)}
   .icon-list{grid-template-columns:repeat(5,1fr)}
@@ -276,11 +343,6 @@ button{cursor:pointer}
           <input id="useFavicon" type="checkbox">
           faviconでアイコンを作る
         </label>
-      </div>
-
-      <div class="field prop-wide" id="faviconUrlField">
-        <label>favicon元URL（該当プロパティ）</label>
-        <input id="propFaviconUrl" placeholder="サイトURL">
       </div>
 
       <div class="field prop-wide">
@@ -335,6 +397,16 @@ button{cursor:pointer}
         <aside class="settings">
           <h3>表示設定</h3>
 
+
+          <div class="group">
+            <label>アイコン表示</label>
+            <select id="iconShape">
+              <option value="original">そのまま表示</option>
+              <option value="circle">丸に切り抜き</option>
+              <option value="square">四角に切り抜き</option>
+            </select>
+          </div>
+
           <div class="group">
             <label>アイコンの大きさ</label>
             <input id="iconSize" type="range" min="36" max="140" step="2" value="72">
@@ -351,6 +423,13 @@ button{cursor:pointer}
             <input id="globalTextColor" type="color" value="#202327">
             <label class="check"><input id="useNotionColor" type="checkbox" checked> Notionの文字色があれば優先</label>
           </div>
+          <div class="group">
+            <label>白縁取り</label>
+            <select id="textOutline">
+              <option value="off">なし</option>
+              <option value="on">あり</option>
+            </select>
+          </div>
 
           <div class="group">
             <label>フォント</label>
@@ -365,22 +444,14 @@ button{cursor:pointer}
             </select>
           </div>
 
-          <div class="group">
-            <button class="btn" id="clearTemplateBtn" style="width:100%">テンプレ削除</button>
-            <button class="btn log-button" id="openLogBtn" type="button">配置ログを見る</button>
-          </div>
 
-          <p class="small">アイコンをクリックすると、個別コメント・切り抜き・個別色を編集できます。</p>
-        </aside>
-      </div>
-    </section>
-  </div>
-</div>
+          <div class="group icon-editor-panel" id="iconEditorPanel">
+            <div class="section-title">アイコン編集</div>
+            <div id="iconEditorEmpty" class="help">テンプレ上のアイコンを選ぶと、ここで編集できます。</div>
+            <div id="iconEditorContent" style="display:none">
 
-<div class="drawer" id="drawer">
   <div class="drawer-head">
     <strong>アイコン編集</strong>
-    <button class="iconbtn" id="closeDrawer">×</button>
   </div>
   <div class="preview"><img id="detailImg"></div>
   <div id="detailName" style="text-align:center;font-weight:800"></div>
@@ -395,6 +466,20 @@ button{cursor:pointer}
   <div style="display:flex;gap:8px;margin-top:14px">
     <button class="btn" id="cropBtn" style="flex:1">切り抜き</button>
     <button class="btn primary" id="saveItemBtn" style="flex:1">保存</button>
+  </div>
+
+            </div>
+          </div>
+
+          <div class="group">
+            <button class="btn" id="clearTemplateBtn" style="width:100%">テンプレ削除</button>
+            <button class="btn log-button" id="openLogBtn" type="button">配置ログを見る</button>
+          </div>
+
+          
+        </aside>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -448,7 +533,7 @@ button{cursor:pointer}
     <p class="help">テンプレ画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
 
     <h3>faviconでアイコンを作る</h3>
-    <p class="help">「favicon元URL（URLに該当するプロパティ・任意）」に、各キャラクターに対応するWebサイトURLが入ったNotionプロパティ名を指定します。右側の「faviconでアイコンを作る」をONにすると、画像プロパティもNotionページアイコンもないキャラだけ、そのURLのfaviconを使います。</p>
+    <p class="help">チェックすると画像プロパティを使わず、Notionページ側のアイコンを読み込みます。チェックを外すと画像プロパティ欄が使えます。</p>
 
     <h3>文字色プロパティについて</h3>
     <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
@@ -521,7 +606,7 @@ let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useNotionColor:true,useFavicon:false,iconShape:'circle',textOutline:'off',fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -533,12 +618,7 @@ function safeColor(v){
   if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
   return '#'+hex.toUpperCase();
 }
-function favicon(url){
-  try{
-    const u=new URL(url);
-    return `${u.origin}/favicon.ico`;
-  }catch{return ''}
-}
+
 
 function propText(p){
   if(!p)return '';
@@ -583,18 +663,14 @@ function normalize(page,cfg){
   const P=page.properties||{};
   const name=propText(P[cfg.propName])||'名称未設定';
   const url=page.url||'';
-  const faviconUrl=cfg.propFaviconUrl ? propText(P[cfg.propFaviconUrl]) : '';
-  const baseImage=cfg.useFavicon ? '' : (propImage(P[cfg.propImage])||pageIcon(page)||'');
+  const notionIcon=pageIcon(page)||'';
+  const baseImage=cfg.useFavicon ? notionIcon : (propImage(P[cfg.propImage])||notionIcon);
   const color=safeColor(propText(P[cfg.propColor]));
   const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
-  return {id:page.id,name,url,faviconUrl,baseImage,color,order};
+  return {id:page.id,name,url,baseImage,color,order};
 }
 
 function displayImage(it){
-  const d=appState().display||{};
-  if(d.useFavicon){
-    return it.faviconUrl ? favicon(it.faviconUrl) : '';
-  }
   return it.baseImage || '';
 }
 
@@ -605,7 +681,6 @@ function saveLoadedCache(){
       id:it.id,
       name:it.name,
       url:it.url||'',
-      faviconUrl:it.faviconUrl||'',
       baseImage:it.baseImage||it.image||'',
       color:it.color||null,
       order:it.order??null
@@ -646,7 +721,6 @@ function saveSettings(saveToken=false){
     propName:$('#propName').value.trim(),
     propImage:useFavicon ? '' : $('#propImage').value.trim(),
     useFavicon,
-    propFaviconUrl:$('#propFaviconUrl').value.trim(),
     propColor:$('#propColor').value.trim(),
     propOrder:$('#propOrder').value.trim(),
     saveApiToken:!!saveToken,
@@ -656,7 +730,7 @@ function saveSettings(saveToken=false){
 }
 function restoreSettings(){
   const s=loadJSON(SETTINGS,{});
-  for(const k of ['notionSource','propName','propImage','propFaviconUrl','propColor','propOrder']){
+  for(const k of ['notionSource','propName','propImage','propColor','propOrder']){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
   if(typeof s.useFavicon==='boolean')$('#useFavicon').checked=s.useFavicon;
@@ -859,6 +933,16 @@ function setupTemplateDrop(){
   });
 }
 
+
+function currentIconShape(){
+  return appState().display?.iconShape || 'circle';
+}
+function applyShapeClass(el,shape=currentIconShape()){
+  if(!el)return;
+  el.classList.remove('mode-original','mode-circle','mode-square');
+  el.classList.add('mode-'+shape);
+}
+
 function renderLibrary(){
   const list=$('#iconList');list.innerHTML='';
   $('#libraryCount').textContent=items.length+'件';
@@ -867,45 +951,54 @@ function renderLibrary(){
     const card=document.createElement('div');card.className='source-card';card.draggable=true;
     card.draggable=false;
     card.addEventListener('pointerdown',e=>startLibraryDrag(e,it,card));
-    const av=document.createElement('div');av.className='source-avatar';
+    const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
     const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';av.append(im);
     const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
     card.append(av,nm);list.append(card);
   });
 }
 function startLibraryDrag(e,it,card){
-  if(e.button!=null && e.button!==0)return;
-  let moved=false;
+  if(e.button!=null&&e.button!==0)return;
+  e.preventDefault();
+  const startX=e.clientX,startY=e.clientY;
+  let moved=false,raf=0,lastX=startX,lastY=startY;
+
   const ghost=document.createElement('div');
   ghost.className='drag-ghost';
+  applyShapeClass(ghost);
   const gi=document.createElement('img');
   gi.src=displayImage(it)||'';
   ghost.appendChild(gi);
-  ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
+  ghost.style.left='0';
+  ghost.style.top='0';
+  ghost.style.transform=`translate3d(${startX-32}px,${startY-32}px,0)`;
   document.body.appendChild(ghost);
-  card.setPointerCapture?.(e.pointerId);
 
+  const paint=()=>{
+    raf=0;
+    ghost.style.transform=`translate3d(${lastX-32}px,${lastY-32}px,0)`;
+  };
   const move=ev=>{
-    moved=true;
-    ghost.style.left=ev.clientX+'px';
-    ghost.style.top=ev.clientY+'px';
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>5)moved=true;
+    if(!raf)raf=requestAnimationFrame(paint);
   };
   const up=ev=>{
+    if(raf)cancelAnimationFrame(raf);
     ghost.remove();
-    card.releasePointerCapture?.(ev.pointerId);
-    card.removeEventListener('pointermove',move);
-    card.removeEventListener('pointerup',up);
-    card.removeEventListener('pointercancel',up);
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+
+    if(!moved){openDrawer(it.id);return}
     const c=$('#canvas').getBoundingClientRect();
     if(ev.clientX>=c.left&&ev.clientX<=c.right&&ev.clientY>=c.top&&ev.clientY<=c.bottom){
       placeItem(it.id,(ev.clientX-c.left)/c.width*100,(ev.clientY-c.top)/c.height*100);
-    }else if(!moved){
-      openDrawer(it.id);
     }
   };
-  card.addEventListener('pointermove',move);
-  card.addEventListener('pointerup',up);
-  card.addEventListener('pointercancel',up);
+  window.addEventListener('pointermove',move,{passive:true});
+  window.addEventListener('pointerup',up,{once:true});
+  window.addEventListener('pointercancel',up,{once:true});
 }
 function placeItem(id,x,y){
   mutate(s=>{
@@ -931,38 +1024,74 @@ function renderPlaced(){
     el.style.left=(l.x??50)+'%';el.style.top=(l.y??50)+'%';
     const chosen=(l.useColor&&safeColor(l.color))||(d.useNotionColor&&it.color)||d.globalTextColor||'#202327';
     el.style.color=chosen;
-    const av=document.createElement('div');av.className='placed-avatar';
-    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';cropStyle(im,l.crop);av.append(im);el.append(av);
+    const av=document.createElement('div');av.className='placed-avatar';applyShapeClass(av);
+    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);el.append(av);
     if(d.showName!==false){const n=document.createElement('div');n.className='placed-name';n.textContent=it.name;el.append(n)}
-    if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';cm.textContent=l.comment;el.append(cm)}
+    if(d.showComment!==false&&l.comment){const cm=document.createElement('div');cm.className='placed-comment';if((appState().display?.textOutline||'off')==='on')cm.classList.add('text-outline');cm.textContent=l.comment;el.append(cm)}
     el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
-    el.addEventListener('click',()=>{if(!drag?.moved)openDrawer(it.id)});
     c.append(el);
   });
 }
 function startPlacedDrag(e,id,el){
-  const r=$('#canvas').getBoundingClientRect();drag={moved:false};el.setPointerCapture(e.pointerId);
-  const mv=ev=>{
-    const x=Math.max(2,Math.min(98,(ev.clientX-r.left)/r.width*100)),y=Math.max(2,Math.min(98,(ev.clientY-r.top)/r.height*100));
-    drag.moved=true;el.style.left=x+'%';el.style.top=y+'%';
+  if(e.button!=null&&e.button!==0)return;
+  e.preventDefault();
+  const r=$('#canvas').getBoundingClientRect();
+  const sx=e.clientX,sy=e.clientY;
+  let x=parseFloat(el.style.left)||50,y=parseFloat(el.style.top)||50;
+  let raf=0,lastX=e.clientX,lastY=e.clientY;
+  drag={moved:false};
+
+  const paint=()=>{
+    raf=0;
+    x=Math.max(2,Math.min(98,(lastX-r.left)/r.width*100));
+    y=Math.max(2,Math.min(98,(lastY-r.top)/r.height*100));
+    el.style.left=x+'%';el.style.top=y+'%';
   };
-  const up=ev=>{
-    el.releasePointerCapture?.(ev.pointerId);
-    mutate(s=>{s.items[id].x=parseFloat(el.style.left);s.items[id].y=parseFloat(el.style.top)});
-    const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
-    appendPlacementLog(id,'move');
-    el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);
+  const mv=ev=>{
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!drag.moved&&Math.hypot(lastX-sx,lastY-sy)>4)drag.moved=true;
+    if(!raf)raf=requestAnimationFrame(paint);
+  };
+  const up=()=>{
+    if(raf){cancelAnimationFrame(raf);paint()}
+    window.removeEventListener('pointermove',mv);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+    if(drag.moved){
+      mutate(s=>{s.items[id].x=x;s.items[id].y=y});
+      const it=items.find(v=>v.id===id);if(it)it.local=appState().items[id];
+      appendPlacementLog(id,'move');
+    }else{
+      openDrawer(id);
+    }
     setTimeout(()=>drag=null,0);
   };
-  el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);
+  window.addEventListener('pointermove',mv,{passive:true});
+  window.addEventListener('pointerup',up,{once:true});
+  window.addEventListener('pointercancel',up,{once:true});
 }
 
+function resetIconEditor(){
+  selectedId=null;
+  if($('#iconEditorContent'))$('#iconEditorContent').style.display='none';
+  if($('#iconEditorEmpty'))$('#iconEditorEmpty').style.display='block';
+}
 function openDrawer(id){
-  selectedId=id;const it=items.find(x=>x.id===id);if(!it)return;
+  selectedId=id;
+  const it=items.find(x=>x.id===id);if(!it)return;
   const l=appState().items[id]||{};
-  $('#detailName').textContent=it.name;$('#detailImg').src=displayImage(it)||'';cropStyle($('#detailImg'),l.crop);
-  $('#commentInput').value=l.comment||'';$('#itemColor').value=safeColor(l.color)||'#202327';$('#useItemColor').checked=!!l.useColor;
-  $('#drawer').classList.add('open');
+  $('#iconEditorEmpty').style.display='none';
+  $('#iconEditorContent').style.display='block';
+  $('#detailName').textContent=it.name;
+  $('#detailImg').src=displayImage(it)||'';
+  const shape=currentIconShape();
+  applyShapeClass($('#detailImg').parentElement,shape);
+  if(shape!=='original')cropStyle($('#detailImg'),l.crop);else $('#detailImg').style.transform='';
+  $('#cropBtn').disabled=shape==='original';
+  $('#cropBtn').textContent=shape==='original'?'切り抜きなし':'切り抜き';
+  $('#commentInput').value=l.comment||'';
+  $('#itemColor').value=safeColor(l.color)||'#202327';
+  $('#useItemColor').checked=!!l.useColor;
 }
 function saveItem(){
   if(!selectedId)return;
@@ -971,13 +1100,17 @@ function saveItem(){
     l.comment=$('#commentInput').value;l.color=$('#itemColor').value;l.useColor=$('#useItemColor').checked;
   });
   const it=items.find(x=>x.id===selectedId);if(it)it.local=appState().items[selectedId];
-  renderPlaced();appendPlacementLog(selectedId,'comment');$('#drawer').classList.remove('open');
+  renderPlaced();appendPlacementLog(selectedId,'comment');openDrawer(selectedId);
 }
 
 /* crop */
 function openCrop(){
   if(!selectedId)return;const it=items.find(x=>x.id===selectedId),l=appState().items[selectedId];
   cropWork={...(l.crop||{x:0,y:0,zoom:1})};$('#cropImg').src=displayImage(it)||'';$('#zoomRange').value=cropWork.zoom||1;
+  const shape=currentIconShape();
+  if(shape==='original')return;
+  const guide=$('#cropStage .crop-circle');
+  guide.classList.toggle('mode-square',shape==='square');
   $('#cropModal').classList.add('open');requestAnimationFrame(updateCrop);
 }
 function updateCrop(){
@@ -1049,14 +1182,11 @@ function syncImageFieldWithFavicon(){
   const on=$('#useFavicon').checked;
   const img=$('#propImage');
   const imgField=$('#propImageField');
-  const fav=$('#propFaviconUrl');
-  const favField=$('#faviconUrlField');
+  if(!img)return;
   img.disabled=on;
-  imgField.classList.toggle('disabled',on);
-  fav.disabled=!on;
-  favField.classList.toggle('disabled',!on);
+  imgField?.classList.toggle('disabled',on);
   if(on){
-    img.dataset.prevValue=img.value;
+    if(img.value)img.dataset.prevValue=img.value;
     img.value='';
     img.placeholder='favicon使用中';
   }else{
@@ -1067,17 +1197,15 @@ function syncImageFieldWithFavicon(){
 
 
 function syncFaviconDisplayState(){
-  mutate(s=>{s.display=s.display||{};s.display.useFavicon=$('#useFavicon').checked});
   syncImageFieldWithFavicon();
   saveSettings(false);
-  renderLibrary();
-  renderPlaced();
+  $('#connectionStatus').textContent='設定変更：読込 / 更新で反映';
 }
 
 /* display settings */
 function restoreDisplay(){
   const d=appState().display||{};
-  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;
+  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#textOutline').value=d.textOutline||'off';
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#useNotionColor').checked=d.useNotionColor!==false;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
@@ -1086,11 +1214,11 @@ function bindDisplay(){
   const update=()=>{
     mutate(s=>s.display={
       iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,fontFamily:$('#fontFamily').value
+      globalTextColor:$('#globalTextColor').value,useNotionColor:$('#useNotionColor').checked,iconShape:$('#iconShape').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
     });
     $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
   };
-  ['iconSize','showName','showComment','globalTextColor','useNotionColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+  ['iconSize','iconShape','textOutline','showName','showComment','globalTextColor','useNotionColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
 $('#loadBtn').onclick=loadNotion;
@@ -1133,7 +1261,6 @@ $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
 
 $('#clearTokenBtn').onclick=clearToken;
 $('#clearLoadedCacheBtn').onclick=clearLoadedCache;
-$('#closeDrawer').onclick=()=>$('#drawer').classList.remove('open');
 $('#saveItemBtn').onclick=saveItem;
 $('#cropBtn').onclick=openCrop;
 $('#cropCancel').onclick=()=>$('#cropModal').classList.remove('open');
