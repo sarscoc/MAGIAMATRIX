@@ -1165,6 +1165,16 @@ button{cursor:pointer}
   border-color:#e5caca;
 }
 
+
+.template-empty-thumb{
+  display:grid !important;
+  place-items:center;
+  background:#f3f5f6;
+  color:#9ba2a7;
+  font-size:8px;
+  letter-spacing:.08em;
+}
+
 </style>
 </head>
 <body>
@@ -1266,8 +1276,7 @@ button{cursor:pointer}
     <section class="stage-shell">
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
-        <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレ</button>
-        <input id="newTemplateFile" type="file" accept="image/*" hidden>
+        <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
       </div>
       <div class="stage">
         <div class="canvas" id="canvas">
@@ -1490,6 +1499,7 @@ button{cursor:pointer}
 const WORKER_URL = "https://cold-shadow-63ca.sarscoc.workers.dev";
 
 const $=s=>document.querySelector(s);
+const API_TOKEN_STORE='magiaMatrix.notion.apiToken.v1';
 const SETTINGS='magiaMatrix.redesign.settings.v1';
 const STATE='magiaMatrix.redesign.state.v1';
 const CACHE='magiaMatrix.notion.cache.v1';
@@ -1635,22 +1645,21 @@ function clearLoadedCache(){
 }
 
 function saveSettings(saveToken=false){
-  const old=loadJSON(SETTINGS,{});
   const useFavicon=$('#useFavicon').checked;
-  const typedToken=$('#apiToken').value.trim();
-  const shouldKeepToken=saveToken || (!!old.saveApiToken && !!old.apiToken);
-
   const s={
     notionSource:$('#notionSource').value.trim(),
     propName:$('#propName').value.trim(),
     propImage:useFavicon ? '' : $('#propImage').value.trim(),
     useFavicon,
     propColor:$('#propColor').value.trim(),
-    propOrder:$('#propOrder').value.trim(),
-    saveApiToken:shouldKeepToken,
-    apiToken:saveToken ? typedToken : (shouldKeepToken ? old.apiToken : '')
+    propOrder:$('#propOrder').value.trim()
   };
   saveJSON(SETTINGS,s);
+
+  if(saveToken){
+    const token=$('#apiToken').value.trim();
+    if(token)localStorage.setItem(API_TOKEN_STORE,token);
+  }
 }
 function restoreSettings(){
   const s=loadJSON(SETTINGS,{});
@@ -1658,13 +1667,12 @@ function restoreSettings(){
     if(s[k]!=null&&$('#'+k))$('#'+k).value=s[k];
   }
   if(typeof s.useFavicon==='boolean')$('#useFavicon').checked=s.useFavicon;
-  if(s.saveApiToken&&s.apiToken)$('#apiToken').value=s.apiToken;
+
+  const savedToken=localStorage.getItem(API_TOKEN_STORE)||'';
+  if(savedToken)$('#apiToken').value=savedToken;
 }
 function clearToken(){
-  const s=loadJSON(SETTINGS,{});
-  s.saveApiToken=false;
-  s.apiToken='';
-  saveJSON(SETTINGS,s);
+  localStorage.removeItem(API_TOKEN_STORE);
   $('#apiToken').value='';
   $('#connectionStatus').textContent='保存したAPIキーを削除しました';
 }
@@ -1810,7 +1818,7 @@ async function tplAllRecords(){
     const tx=db.transaction('templates');
     const store=tx.objectStore('templates');
     const req=store.getAll();
-    req.onsuccess=()=>ok((req.result||[]).sort((a,b)=>(b.uploadedAt||0)-(a.uploadedAt||0)));
+    req.onsuccess=()=>ok((req.result||[]).sort((a,b)=>(b.updatedAt||b.createdAt||b.uploadedAt||0)-(a.updatedAt||a.createdAt||a.uploadedAt||0)));
     req.onerror=()=>no(req.error);
   });
 }
@@ -1824,32 +1832,102 @@ async function tplDeleteRecord(id){
     tx.onerror=()=>no(tx.error);
   });
 }
+
+function makeTemplateId(){
+  if(crypto?.randomUUID)return 'tpl-'+crypto.randomUUID();
+  return 'tpl-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+}
+function makeTemplateName(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return `テンプレ ${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+async function createNewTemplate(){
+  // Save the old editing page first.
+  saveCurrentTemplateState();
+
+  const id=makeTemplateId();
+  const rec={
+    id,
+    name:makeTemplateName(),
+    dataUrl:'',
+    createdAt:Date.now(),
+    updatedAt:Date.now()
+  };
+  await tplSetRecord(id,rec);
+  localStorage.setItem(TEMPLATE_CURRENT,id);
+
+  // Brand-new template starts with no placed icons, comments or crop edits.
+  const s=appState();
+  s.items={};
+  saveState(s);
+
+  const all=templateStates();
+  all[id]={savedAt:Date.now(),items:{}};
+  setTemplateStates(all);
+
+  items.forEach(it=>{
+    const local={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    s.items[it.id]=local;
+    it.local=local;
+  });
+  saveState(s);
+  saveCurrentTemplateState(s);
+
+  showTemplateRecord(rec);
+  renderLibrary();
+  renderPlaced();
+  resetIconEditor();
+  await renderTemplateTabs();
+}
+
 async function renderTemplateTabs(){
   const box=$('#templateTabs');
   if(!box)return;
   const recs=await tplAllRecords();
   box.innerHTML='';
+
   if(!recs.length){
     box.innerHTML='<div class="template-tab-empty">まだありません</div>';
     return;
   }
+
   const current=currentTemplateId();
+
   recs.forEach(rec=>{
     const card=document.createElement('div');
     card.className='template-card'+(rec.id===current?' active':'');
-    card.title=rec.name||'保存テンプレ';
+    card.dataset.templateId=rec.id;
 
-    const b=document.createElement('button');
-    b.type='button';
-    b.className='template-tab'+(rec.id===current?' active':'');
-    const im=document.createElement('img');
-    im.className='template-tab-thumb';
-    im.src=rec.dataUrl||'';
+    const open=document.createElement('button');
+    open.type='button';
+    open.className='template-tab'+(rec.id===current?' active':'');
+    open.title='このテンプレを編集';
+
+    if(rec.dataUrl){
+      const im=document.createElement('img');
+      im.className='template-tab-thumb';
+      im.src=rec.dataUrl;
+      open.appendChild(im);
+    }else{
+      const empty=document.createElement('div');
+      empty.className='template-tab-thumb template-empty-thumb';
+      empty.textContent='NO IMAGE';
+      open.appendChild(empty);
+    }
+
     const nm=document.createElement('span');
     nm.className='template-tab-name';
     nm.textContent=rec.name||'保存テンプレ';
-    b.append(im,nm);
-    b.onclick=async()=>{await switchTemplate(rec.id);showLibraryPage('icons')};
+    open.appendChild(nm);
+
+    // Open the saved template IN EDIT MODE.
+    // Do not jump to the character/icon page.
+    open.onclick=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      await switchTemplate(rec.id);
+    };
 
     const del=document.createElement('button');
     del.type='button';
@@ -1862,18 +1940,21 @@ async function renderTemplateTabs(){
       await deleteSavedTemplate(rec.id);
     };
 
-    card.append(b,del);
+    card.append(open,del);
     box.appendChild(card);
   });
 }
 
 async function deleteSavedTemplate(id){
   if(!id)return;
+
   const rec=await tplGetRecord(id);
   const name=rec?.name||'このテンプレ';
-  if(!confirm(`「${name}」を削除しますか？\nこのテンプレの配置・補足・切り抜き設定も削除されます。`))return;
+
+  if(!window.confirm(`「${name}」を削除しますか？\n配置・補足・切り抜き・個別色も一緒に削除されます。`))return;
 
   const wasCurrent=id===currentTemplateId();
+
   await tplDeleteRecord(id);
 
   const all=templateStates();
@@ -1882,29 +1963,41 @@ async function deleteSavedTemplate(id){
 
   if(wasCurrent){
     localStorage.removeItem(TEMPLATE_CURRENT);
-    const recs=await tplAllRecords();
-    if(recs.length){
-      localStorage.setItem(TEMPLATE_CURRENT,recs[0].id);
-      showTemplateRecord(recs[0]);
-      restoreTemplatePlacementState(recs[0].id);
+
+    const remaining=await tplAllRecords();
+    if(remaining.length){
+      const next=remaining[0];
+      localStorage.setItem(TEMPLATE_CURRENT,next.id);
+      showTemplateRecord(next);
+      restoreTemplatePlacementState(next.id);
     }else{
       showTemplateRecord(null);
       const s=appState();
       s.items={};
+      items.forEach(it=>{
+        const local={placed:false,x:50,y:50,comment:'',crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+        s.items[it.id]=local;
+        it.local=local;
+      });
       saveState(s);
       renderLibrary();
       renderPlaced();
       resetIconEditor();
     }
   }
+
   await renderTemplateTabs();
 }
 
 async function switchTemplate(id){
-  if(!id||id===currentTemplateId())return;
-  saveCurrentTemplateState();
+  if(!id)return;
+
+  const oldId=currentTemplateId();
+  if(oldId && oldId!==id)saveCurrentTemplateState();
+
   const rec=await tplGetRecord(id);
   if(!rec)return;
+
   localStorage.setItem(TEMPLATE_CURRENT,id);
   showTemplateRecord(rec);
   restoreTemplatePlacementState(id);
@@ -1924,49 +2017,67 @@ function showTemplateRecord(rec){
   }
 }
 async function restoreTemplate(){
-  const id=currentTemplateId();
-  const rec=await tplGetRecord(id);
-  showTemplateRecord(rec);
-  if(id)restoreTemplatePlacementState(id);
+  let id=currentTemplateId();
+  let rec=id ? await tplGetRecord(id) : null;
+
+  if(!rec){
+    const recs=await tplAllRecords();
+    if(recs.length){
+      rec=recs[0];
+      id=rec.id;
+      localStorage.setItem(TEMPLATE_CURRENT,id);
+    }
+  }
+
+  if(rec){
+    showTemplateRecord(rec);
+    restoreTemplatePlacementState(id);
+  }else{
+    await createNewTemplate();
+  }
+
   await renderTemplateTabs();
 }
 async function saveTemplateFile(file){
-  saveCurrentTemplateState();
-  const dataUrl=await new Promise((ok,no)=>{
-    const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(r.error);r.readAsDataURL(file);
-  });
-  const id=await hashText(dataUrl);
-  let rec=await tplGetRecord(id);
-  if(!rec){
-    rec={id,name:file.name||'template',dataUrl,uploadedAt:Date.now()};
-    await tplSetRecord(id,rec);
+  let id=currentTemplateId();
+
+  // If there is no current editing page yet, create one first.
+  if(!id){
+    await createNewTemplate();
+    id=currentTemplateId();
   }
-  localStorage.setItem(TEMPLATE_CURRENT,id);
+
+  const dataUrl=await new Promise((ok,no)=>{
+    const r=new FileReader();
+    r.onload=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+    r.readAsDataURL(file);
+  });
+
+  const old=await tplGetRecord(id)||{
+    id,
+    name:makeTemplateName(),
+    createdAt:Date.now()
+  };
+
+  const rec={
+    ...old,
+    id,
+    dataUrl,
+    imageName:file.name||old.imageName||'template',
+    updatedAt:Date.now()
+  };
+  await tplSetRecord(id,rec);
+
+  saveCurrentTemplateState();
   showTemplateRecord(rec);
-  restoreTemplatePlacementState(id);
   await renderTemplateTabs();
   return id;
 }
 async function clearCurrentTemplate(){
   const id=currentTemplateId();
   if(!id)return;
-  await tplDeleteRecord(id);
-  const all=templateStates();
-  delete all[id];
-  setTemplateStates(all);
-  localStorage.removeItem(TEMPLATE_CURRENT);
-
-  const recs=await tplAllRecords();
-  if(recs.length){
-    localStorage.setItem(TEMPLATE_CURRENT,recs[0].id);
-    showTemplateRecord(recs[0]);
-    restoreTemplatePlacementState(recs[0].id);
-  }else{
-    showTemplateRecord(null);
-    const s=appState();s.items={};saveState(s);
-    renderLibrary();renderPlaced();resetIconEditor();
-  }
-  await renderTemplateTabs();
+  await deleteSavedTemplate(id);
 }
 function setupTemplateDrop(){
   const c=$('#canvas');
@@ -2458,15 +2569,10 @@ $('#showIconsTab').onclick=()=>showLibraryPage('icons');
 $('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
 $('#settingsMenuBtn').onclick=()=>toggleDisplayPanel(true);
 $('#commentInput').addEventListener('input',updateSelectedCommentRealtime);
-$('#newTemplateBtn').onclick=()=>$('#newTemplateFile').click();
-$('#newTemplateFile').onchange=async e=>{
-  const f=e.target.files?.[0];
-  if(!f)return;
-  await saveTemplateFile(f);
-  e.target.value='';
-};
+$('#newTemplateBtn').onclick=createNewTemplate;
 $('#clearTemplateBtn').onclick=clearCurrentTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
+window.addEventListener('beforeunload',()=>saveCurrentTemplateState());
 
 
 
