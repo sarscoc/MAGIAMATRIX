@@ -2198,10 +2198,11 @@ button{cursor:pointer}
 }
 
 
-/* v99: compact direction controls — textarea → 2px gap → 34px arrow → 2px → outer frame */
+/* v100: visual spacing is 2px → arrow glyph → 2px, while the invisible hit area stays 34px */
 .inline-comment-editor{
   overflow:visible!important;
-  padding:38px!important;
+  /* 22px glyph + 2px on each side = 26px visible gutter */
+  padding:26px!important;
 }
 
 .inline-comment-editor textarea{
@@ -2224,7 +2225,7 @@ button{cursor:pointer}
   min-height:34px!important;
   padding:0!important;
   border:0!important;
-  border-radius:10px!important;
+  border-radius:0!important;
   background:transparent!important;
   box-shadow:none!important;
   color:#667078!important;
@@ -2250,24 +2251,25 @@ button{cursor:pointer}
   display:none!important;
 }
 
-/* top / bottom / left / right — all stay inside the outer frame */
+/* The 34px hit box overlaps invisibly by 4px on each side.
+   The visible 22px glyph itself sits exactly 2px from both the textarea and outer frame. */
 .comment-direction-btn.dir-top{
   left:50%!important;
-  top:2px!important;
+  top:-4px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-bottom{
   left:50%!important;
-  bottom:2px!important;
+  bottom:-4px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-left{
-  left:2px!important;
+  left:-4px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
 .comment-direction-btn.dir-right{
-  right:2px!important;
+  right:-4px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
