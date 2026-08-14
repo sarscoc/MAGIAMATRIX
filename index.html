@@ -2348,7 +2348,7 @@ button{cursor:pointer}
         <div class="api-input-row">
           <input id="apiToken" type="password" autocomplete="off" placeholder="secret_...">
           <button class="btn icon" id="saveApiBtn" type="button" title="APIキーを保存">💾</button>
-          <button class="btn icon" id="apiHelpBtn" type="button" title="APIキーについて">?</button>
+          <button class="btn icon" id="apiHelpBtn" type="button" title="使い方">?</button>
         </div>
       </div>
 
@@ -2583,58 +2583,82 @@ button{cursor:pointer}
 <div class="modal" id="helpModal">
   <div class="modalbox">
     <div class="drawer-head draggable-panel-head" id="displayPanelDragHandle">
-      <strong>APIキーについて</strong>
-      <button class="iconbtn" id="helpClose">×</button>
+      <strong>MAGIA MATRIX の使い方</strong>
+      <button class="iconbtn" id="helpClose" type="button">×</button>
     </div>
 
-    <p class="help">ここにはNotionのAPIキーを入力します。APIキーはNotionのデータを読むための認証情報です。</p>
+    <p class="help">このツールは Notion API を使ってデータを読み込みます。Notion APIキーとデータベースURL / IDを入力し、「読込 / 更新」を押してください。</p>
 
-    <div class="notice" style="margin-top:10px">
-      <strong>APIキーの取得方法について</strong>
-      <p class="help" style="margin-bottom:0">APIキーの発行・取得・権限設定の方法は、各サービスの公式案内を確認してご自身で設定してください。このページではAPIキーの作り方・取得方法は案内しません。</p>
-    </div>
-
-    <h3>保存について</h3>
-    <ul class="help">
-      <li>APIキーは「保存する」を選んだ場合のみ、このブラウザの Local Storage に保存できます。</li>
-      <li>コメント・配置・切り抜き・表示設定もこのブラウザ内に保存されます。</li>
-      <li>テンプレ画像は IndexedDB に保存されます。</li>
-      <li>作者のサーバーへ保存する処理はありません。</li>
-    </ul>
-
-    <h3>Chromeでの確認場所</h3>
-    <p class="help"><code>開発者ツール → Application → Local Storage → このサイトのURL</code></p>
-    <p class="help">テンプレ画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
+    <h3>読み込み項目について</h3>
+    <p class="help"><strong>名前（該当プロパティ）</strong><br>キャラクター名など、一覧に表示したい名前が入っているNotionのプロパティ名を指定します。通常は <code>名前</code> などを指定します。</p>
+    <p class="help"><strong>画像（該当プロパティ）</strong><br>アイコンとして使う画像が入っているNotionのプロパティ名を指定します。</p>
+    <p class="help"><strong>文字色（該当プロパティ・任意）</strong><br>名前やコメントに使いたい色を指定するプロパティです。使わない場合は空欄でも構いません。</p>
+    <p class="help"><strong>整列（数字のみ・任意）</strong><br>アイコン一覧を数字の小さい順に並べたい場合に使います。Notion側に <code>1</code>、<code>2</code>、<code>3</code>…のような数字プロパティを用意し、そのプロパティ名を指定してください。使わない場合は空欄で構いません。</p>
 
     <h3>faviconでアイコンを作る</h3>
-    <p class="help">チェックすると画像プロパティを使わず、Notionページ側のアイコンを読み込みます。チェックを外すと画像プロパティ欄が使えます。</p>
+    <p class="help">チェックすると画像プロパティを使わず、Notionページ側に設定したページアイコンを読み込みます。チェックを外すと「画像（該当プロパティ）」の画像を使用します。</p>
 
     <h3>文字色プロパティについて</h3>
-    <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
+    <p class="help">文字色は <code>#E95464</code> のようなカラーコードだけでなく、文章や装飾コードの中に含まれていても読み取ります。例：<code>\\colorbox{#e95464}{...}</code>。複数のカラーコードが含まれる場合は、最後に見つかった色を使用します。</p>
 
-    <h3>APIキーの危険性</h3>
-    <ul class="help">
-      <li>APIキーが流出すると、そのキーに許可された範囲で第三者にデータを閲覧される可能性があります。</li>
-      <li>書き込み権限のあるキーなら、別のツールから変更・削除に悪用される可能性があります。</li>
-      <li>可能なら読み取り専用のIntegrationを使用してください。</li>
-      <li>漏れた疑いがある場合は、すぐに無効化・再発行してください。</li>
-    </ul>
+    <h3>アイコンの配置・配置解除</h3>
+    <p class="help">左のアイコン一覧からテンプレへドラッグすると配置できます。配置済みアイコンを左のアイコン一覧側までドラッグして離すと、テンプレ上から配置解除できます。コメントや切り抜き設定は残るので、あとで再配置できます。</p>
 
-    <div id="saveConfirmArea" style="display:none;margin-top:10px">
-      <div class="notice">
-        <strong>APIキーをこの端末に保存しますか？</strong>
-        <p class="help" style="margin-bottom:0">保存先は、この端末・このブラウザ・このサイト専用の Local Storage です。作者のサーバーには保存しません。ただし、同じサイト上で悪意あるJavaScriptが実行された場合などには読み取られる可能性があります。</p>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn" id="cancelSaveApiBtn" type="button" style="flex:1">保存しない</button>
-        <button class="btn primary" id="confirmSaveApiBtn" type="button" style="flex:1">理解して保存する</button>
-      </div>
-    </div>
-    <button class="btn" id="clearTokenBtn">保存したAPIキーを削除</button>
+    <h3>アイコンの切り抜き</h3>
+    <p class="help"><strong>そのまま表示</strong>では画像を切り抜かず、元画像全体を表示します。</p>
+    <p class="help"><strong>丸に切り抜き / 角丸四角に切り抜き</strong>では、アイコン一覧の画像をクリックすると切り抜き位置を調整できます。ドラッグで位置、マウスホイールやスライダーで拡大・縮小し、「保存」で位置を確定します。</p>
+
+    <h3>コメント</h3>
+    <p class="help">テンプレ上のアイコンをダブルクリックするとコメントを編集できます。コメントの上下左右の位置もアイコンごとに変更できます。</p>
+
+    <h3>画像保存</h3>
+    <p class="help"><strong>「画像保存（SS）」</strong>を押すと、現在のテンプレ・アイコン・名前・コメントをPNG画像として保存します。</p>
+    <p class="help">画像や表示がいつもと違う、保存結果の挙動が怪しい場合は、いったん <strong>「読込 / 更新」</strong> を押して最新データと画像を読み込んでから、もう一度保存してみてください。</p>
+
+    <h3>このブラウザへの保存について</h3>
+    <p class="help">読み込んだデータ、配置、コメント、切り抜き、表示設定、テンプレ画像、取得したアイコン画像などは、このブラウザ内の Local Storage / IndexedDB に保存されます。</p>
+    <p class="help"><strong>永久保存ではありません。</strong> ブラウザのサイトデータ削除、閲覧データ削除、端末変更、ブラウザ変更、プライベートブラウズなどで消える場合があります。大切な完成画像はPNGとして別途保存してください。</p>
+    <p class="help">作者のサーバーへ、コメントやテンプレを保存する処理はありません。</p>
+
+    <h3>Chromeで保存内容を確認する場合</h3>
+    <p class="help"><code>開発者ツール → Application → Local Storage → このサイトのURL</code></p>
+    <p class="help">テンプレ画像や取得したアイコン画像は <code>Application → IndexedDB → magiaMatrixDB</code> で確認できます。</p>
+
     <button class="btn" id="clearLoadedCacheBtn" type="button">保存した読み込みデータを削除</button>
   </div>
 </div>
 
+<div class="modal" id="apiSaveModal">
+  <div class="modalbox">
+    <div class="drawer-head">
+      <strong>APIキーを保存</strong>
+      <button class="iconbtn" id="apiSaveClose" type="button">×</button>
+    </div>
+
+    <p class="help">MAGIA MATRIXはNotionのデータを読み込むために Notion API を使用します。</p>
+
+    <div class="notice" style="margin-top:10px">
+      <strong>APIキーをこの端末に保存しますか？</strong>
+      <p class="help" style="margin-bottom:0">保存先は、この端末・このブラウザ・このサイト専用の Local Storage です。作者のサーバーには保存しません。ただし、同じサイト上で悪意あるJavaScriptが実行された場合などには読み取られる可能性があります。</p>
+    </div>
+
+    <h3>APIキーについて</h3>
+    <ul class="help">
+      <li>APIキーが流出すると、そのキーに許可された範囲で第三者にデータを閲覧される可能性があります。</li>
+      <li>書き込み権限のあるキーは、別のツールから変更・削除に悪用される可能性があります。</li>
+      <li>可能なら読み取り専用のIntegrationを使用してください。</li>
+      <li>漏れた疑いがある場合は、すぐに無効化・再発行してください。</li>
+    </ul>
+
+    <p class="help">APIキーの発行・権限設定についてはNotionの公式案内をご確認ください。</p>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" id="cancelSaveApiBtn" type="button" style="flex:1">保存しない</button>
+      <button class="btn primary" id="confirmSaveApiBtn" type="button" style="flex:1">理解して保存する</button>
+    </div>
+    <button class="btn" id="clearTokenBtn" type="button">保存したAPIキーを削除</button>
+  </div>
+</div>
 
 
 
@@ -5107,13 +5131,12 @@ $('#saveApiBtn').onclick=e=>{
     alert('先にNotion APIキーを入力してください。');
     return;
   }
-  $('#helpModal').classList.add('open');
-  $('#saveConfirmArea').style.display='block';
+  $('#apiSaveModal').classList.add('open');
 };
 
 $('#cancelSaveApiBtn').onclick=e=>{
   e.preventDefault();
-  $('#saveConfirmArea').style.display='none';
+  $('#apiSaveModal').classList.remove('open');
 };
 
 $('#confirmSaveApiBtn').onclick=e=>{
@@ -5124,12 +5147,12 @@ $('#confirmSaveApiBtn').onclick=e=>{
     return;
   }
   saveSettings(true);
-  $('#saveConfirmArea').style.display='none';
-  $('#helpModal').classList.remove('open');
+  $('#apiSaveModal').classList.remove('open');
   $('#connectionStatus').textContent='APIキーをこの端末に保存しました';
 };
 
 $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
+$('#apiSaveClose').onclick=()=>$('#apiSaveModal').classList.remove('open');
 $('#clearTokenBtn').onclick=clearToken;
 $('#clearLoadedCacheBtn').onclick=clearLoadedCache;
 
