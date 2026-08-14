@@ -1767,6 +1767,34 @@ button{cursor:pointer}
   opacity:1!important;
 }
 
+
+/* v59: complete crop guideline inside the 150x150 crop area */
+.left-crop-stage .crop-circle{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  box-sizing:border-box!important;
+  pointer-events:none!important;
+  z-index:10!important;
+  border:2px solid rgba(255,255,255,.96)!important;
+  outline:1px solid rgba(25,35,45,.34)!important;
+  outline-offset:-3px!important;
+  box-shadow:
+    inset 0 0 0 1px rgba(25,35,45,.16),
+    0 0 0 0 transparent!important;
+}
+
+/* Circle guideline */
+.left-crop-stage .crop-circle:not(.mode-square){
+  border-radius:50%!important;
+}
+
+/* Rounded-square guideline */
+.left-crop-stage .crop-circle.mode-square{
+  border-radius:18%!important;
+}
+
 </style>
 </head>
 <body>
@@ -1947,14 +1975,7 @@ button{cursor:pointer}
             <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
           </div>
           <div class="group">
-            <label>コメントの位置</label>
-            <select id="commentPosition">
-            <option value="top">上</option>
-            <option value="bottom">下</option>
-            <option value="left">左</option>
-            <option value="right">右</option>
-          </select>
-          <label>コメント枠</label>
+<label>コメント枠</label>
           <select id="commentBox">
             <option value="on">あり</option>
             <option value="off">なし</option>
@@ -2875,7 +2896,7 @@ function placeItem(id,x,y){
     l.placed=true;
     l.x=Math.max(2,Math.min(98,x));
     l.y=Math.max(2,Math.min(98,y));
-    if(!l.commentPosition)l.commentPosition=s.display?.commentPosition||'top';
+    if(!l.commentPosition)l.commentPosition='top';
     if(!Number(l.iconSize))l.iconSize=Number(s.display?.iconSize)||72;
     if(!l.crop)l.crop={x:0,y:0,zoom:1};
   });
@@ -2901,7 +2922,7 @@ function openInlineCommentEditor(id,el){
   if(!l||!el)return;
 
   let draftComment=l.comment||'';
-  let draftPosition=l.commentPosition||d.commentPosition||'top';
+  let draftPosition=l.commentPosition||'top';
 
   const box=document.createElement('div');
   box.className='inline-comment-editor pos-'+draftPosition;
@@ -3043,7 +3064,7 @@ function renderPlaced(){
 
     if(d.showComment!==false&&String(l.comment||'').trim()){
       const cm=document.createElement('div');
-      const pos=l.commentPosition||d.commentPosition||'top';
+      const pos=l.commentPosition||'top';
       cm.className='placed-comment comment-'+pos+' '+((d.commentBox||'on')==='on'?'with-box':'no-box');
       cm.textContent=l.comment;
       cm.style.fontSize=(d.commentFontSize||10)+'px';
@@ -3255,7 +3276,7 @@ async function exportFinalImage(){
       const lines=exportWrapText(ctx,l.comment,Math.min(out.width*.28,180*scale));
       const lineH=fs*1.2;
       const boxed=(d.commentBox||'on')==='on';
-      const pos=l.commentPosition||d.commentPosition||'top';
+      const pos=l.commentPosition||'top';
 
       const padX=boxed?6*scale:0;
       const padY=boxed?3*scale:0;
@@ -3417,7 +3438,7 @@ function toggleDisplayPanel(force){
 
 function restoreDisplay(){
   const d=appState().display||{};
-  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentPosition').value=d.commentPosition||'top';$('#commentBox').value=d.commentBox||'on';$('#textOutline').value=d.textOutline||'off';
+  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentBox').value=d.commentBox||'on';$('#textOutline').value=d.textOutline||'off';
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor!==false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
@@ -3434,7 +3455,6 @@ function bindDisplay(){
     iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
     iconShape:$('#iconShape').value,
     commentFontSize:Number($('#commentFontSize').value),
-    commentPosition:$('#commentPosition').value,
     commentBox:$('#commentBox').value,
     textOutline:$('#textOutline').value,
     fontFamily:$('#fontFamily').value
@@ -3459,7 +3479,7 @@ function bindDisplay(){
     saveTimer=setTimeout(persist,120);
   };
 
-  ['iconSize','iconShape','commentFontSize','commentPosition','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily']
+  ['iconSize','iconShape','commentFontSize','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily']
     .forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
