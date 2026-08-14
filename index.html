@@ -1577,9 +1577,6 @@ button{cursor:pointer}
 .inline-comment-row{display:grid;grid-template-columns:1fr 30px;gap:5px;margin-top:5px}
 .inline-comment-row select{min-width:0;height:28px;font-size:10px}
 .inline-comment-close{height:28px;border:1px solid #dfe4e7;border-radius:6px;background:#fff;cursor:pointer}
-.inline-size-row{display:grid;grid-template-columns:auto 1fr auto;gap:5px;align-items:center;margin-top:5px;font-size:9px;color:#657078}
-.inline-size-row input{width:100%;min-width:0}
-
 /* v50 RIGHT: display menu fixed, only open/close */
 .stage{position:relative!important}
 #settings{position:absolute!important;top:46px!important;right:8px!important;left:auto!important;width:240px!important;max-width:calc(100% - 16px)!important;max-height:calc(100% - 54px)!important;z-index:120!important;margin:0!important;transform:none!important}
@@ -1674,6 +1671,100 @@ button{cursor:pointer}
   width:30px!important;
   min-width:30px!important;
   flex:0 0 30px!important;
+}
+
+
+/* v54: compact left crop workspace */
+.left-crop-editor{
+  padding:7px!important;
+}
+.left-crop-stage{
+  width:150px!important;
+  height:150px!important;
+  aspect-ratio:1/1!important;
+  margin:0 auto 6px!important;
+  flex:none!important;
+}
+#leftCropZoom{
+  width:150px!important;
+  display:block!important;
+  margin:5px auto!important;
+}
+.left-crop-editor > .small{
+  display:block;
+  text-align:center;
+}
+.left-crop-actions{
+  width:150px!important;
+  margin:6px auto 0!important;
+}
+
+
+/* v55: crop origin is the exact center */
+.left-crop-stage,
+.source-avatar,
+.placed-avatar{
+  position:relative !important;
+}
+
+.left-crop-stage img,
+.source-avatar img,
+.placed-avatar img{
+  position:absolute !important;
+  left:50%;
+  top:50%;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  margin:0 !important;
+  transform-origin:center center !important;
+}
+
+
+/* v56 icon shapes */
+.placed-avatar.mode-circle,
+.source-avatar.mode-circle,
+.drag-ghost.mode-circle,
+.preview.mode-circle{
+  border-radius:50% !important;
+  overflow:hidden !important;
+}
+
+.placed-avatar.mode-square,
+.source-avatar.mode-square,
+.drag-ghost.mode-square,
+.preview.mode-square{
+  border-radius:18% !important;
+  overflow:hidden !important;
+}
+
+/* crop guide follows the same shape */
+.crop-circle.mode-square,
+.left-crop-stage .crop-circle.mode-square{
+  border-radius:18% !important;
+}
+
+
+/* v57: translucent comment editor, opaque typing area */
+.inline-comment-editor{
+  background:rgba(255,255,255,.42)!important;
+  border-color:rgba(190,198,204,.55)!important;
+  box-shadow:0 5px 16px rgba(0,0,0,.08)!important;
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+}
+
+.inline-comment-editor textarea{
+  background:#fff!important;
+  opacity:1!important;
+  color:#202327!important;
+  border-color:#d9dfe3!important;
+}
+
+.inline-comment-editor select,
+.inline-comment-editor .inline-comment-close{
+  background:rgba(255,255,255,.88)!important;
+  opacity:1!important;
 }
 
 </style>
@@ -2107,7 +2198,7 @@ function restoreLoadedCache(){
 
   items=c.items.map(it=>{
     if(!s.items[it.id]){
-      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
     }
     return {...it,local:s.items[it.id]};
   });
@@ -2193,7 +2284,7 @@ async function loadNotion(){
     const s=appState();s.items||={};
     items=(j.results||[]).map(page=>{
       const v=normalize(page,cfg);
-      if(!s.items[v.id])s.items[v.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      if(!s.items[v.id])s.items[v.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
       v.local=s.items[v.id];
       return v;
     });
@@ -2291,7 +2382,7 @@ function restoreTemplatePlacementState(tid){
   // ensure every loaded item has a local record
   items.forEach(it=>{
     if(!s.items[it.id]){
-      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
     }
     it.local=s.items[it.id];
   });
@@ -2355,7 +2446,7 @@ async function createNewTemplate(){
   setTemplateStates(all);
 
   items.forEach(it=>{
-    const local={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    const local={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
     s.items[it.id]=local;
     it.local=local;
   });
@@ -2462,7 +2553,7 @@ async function deleteSavedTemplate(id){
       const s=appState();
       s.items={};
       items.forEach(it=>{
-        const local={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+        const local={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
         s.items[it.id]=local;
         it.local=local;
       });
@@ -2610,8 +2701,13 @@ let leftCropSelectedId=null;
 let leftCropWork={x:0,y:0,zoom:1};
 function updateLeftCropPreview(){
   const img=$('#leftCropImg');if(!img)return;
-  img.style.transform=`translate(${Number(leftCropWork.x||0)}%,${Number(leftCropWork.y||0)}%) scale(${Number(leftCropWork.zoom||1)})`;
-  $('#leftCropZoom').value=Number(leftCropWork.zoom||1);
+  const x=Number(leftCropWork.x||0);
+  const y=Number(leftCropWork.y||0);
+  const zoom=Number(leftCropWork.zoom||1);
+  img.style.left=(50+x)+'%';
+  img.style.top=(50+y)+'%';
+  img.style.transform=`translate(-50%,-50%) scale(${zoom})`;
+  $('#leftCropZoom').value=zoom;
 }
 function openLeftCropEditor(id){
   const it=items.find(x=>x.id===id);if(!it)return;
@@ -2661,7 +2757,7 @@ function refreshSourceCropPreview(id){
   if(!img)return;
   const l=appState().items?.[id]||{};
   if(currentIconShape()!=='original')cropStyle(img,l.crop);
-  else img.style.transform='';
+  else{img.style.left='50%';img.style.top='50%';img.style.transform='translate(-50%,-50%)';}
 }
 
 function renderLibrary(){
@@ -2788,7 +2884,12 @@ function placeItem(id,x,y){
 }
 function cropStyle(img,c){
   c=c||{x:0,y:0,zoom:1};
-  img.style.transform=`translate(${Number(c.x||0)}%,${Number(c.y||0)}%) scale(${Number(c.zoom||1)})`;
+  const x=Number(c.x||0);
+  const y=Number(c.y||0);
+  const zoom=Number(c.zoom||1);
+  img.style.left=(50+x)+'%';
+  img.style.top=(50+y)+'%';
+  img.style.transform=`translate(-50%,-50%) scale(${zoom})`;
 }
 
 let placedClickTimers=new Map();
@@ -2801,7 +2902,6 @@ function openInlineCommentEditor(id,el){
 
   let draftComment=l.comment||'';
   let draftPosition=l.commentPosition||d.commentPosition||'top';
-  let draftSize=Number(l.iconSize)||Number(d.iconSize)||72;
 
   const box=document.createElement('div');
   box.className='inline-comment-editor pos-'+draftPosition;
@@ -2827,20 +2927,7 @@ function openInlineCommentEditor(id,el){
   close.textContent='✓';
 
   row.append(posSelect,close);
-
-  const sizeWrap=document.createElement('div');
-  sizeWrap.className='inline-size-row';
-  const sizeLabel=document.createElement('span');
-  sizeLabel.textContent='アイコン';
-  const size=document.createElement('input');
-  size.type='range';
-  size.min='32';size.max='180';size.step='1';
-  size.value=draftSize;
-  const sizeValue=document.createElement('span');
-  sizeValue.textContent=draftSize+'px';
-  sizeWrap.append(sizeLabel,size,sizeValue);
-
-  box.append(ta,row,sizeWrap);
+  box.append(ta,row);
   el.appendChild(box);
 
   const updateCommentPreview=()=>{
@@ -2871,12 +2958,6 @@ function openInlineCommentEditor(id,el){
     updateCommentPreview();
   });
 
-  size.addEventListener('input',()=>{
-    draftSize=Number(size.value)||72;
-    sizeValue.textContent=draftSize+'px';
-    el.style.setProperty('--item-icon-size',draftSize+'px');
-  });
-
   close.onclick=e=>{
     e.preventDefault();
     e.stopPropagation();
@@ -2885,7 +2966,6 @@ function openInlineCommentEditor(id,el){
       if(!local)return;
       local.comment=draftComment;
       local.commentPosition=draftPosition;
-      local.iconSize=draftSize;
     });
     const it=items.find(x=>x.id===id);
     if(it)it.local=appState().items[id];
@@ -2927,7 +3007,7 @@ function renderPlaced(){
     el.dataset.id=it.id;
     el.style.left=(l.x??50)+'%';
     el.style.top=(l.y??50)+'%';
-    el.style.setProperty('--item-icon-size',(Number(l.iconSize)||Number(d.iconSize)||72)+'px');
+    el.style.setProperty('--item-icon-size',(Number(d.iconSize)||72)+'px');
 
     const chosen=(d.useIndividualTextColor!==false
       ? (it.color||d.globalTextColor)
@@ -3105,13 +3185,57 @@ function exportText(ctx,text,x,y,color,outline,font){
   ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();
 }
 async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
-  const im=await exportLoadImage(src);ctx.save();
-  if(shape==='circle'){ctx.beginPath();ctx.arc(cx,cy,size/2,0,Math.PI*2);ctx.clip()}
-  else if(shape==='square'){ctx.beginPath();ctx.rect(cx-size/2,cy-size/2,size,size);ctx.clip()}
-  const contain=shape==='original',base=contain?Math.min(size/im.naturalWidth,size/im.naturalHeight):Math.max(size/im.naturalWidth,size/im.naturalHeight);
-  const zoom=contain?1:Number(crop?.zoom||1),w=im.naturalWidth*base*zoom,h=im.naturalHeight*base*zoom,dx=contain?0:Number(crop?.x||0)/100*size,dy=contain?0:Number(crop?.y||0)/100*size;
-  ctx.drawImage(im,cx-w/2+dx,cy-h/2+dy,w,h);ctx.restore();
-  if(shape!=='original'){ctx.save();ctx.lineWidth=Math.max(2,size*.035);ctx.strokeStyle=border||'#fff';if(shape==='circle'){ctx.beginPath();ctx.arc(cx,cy,size/2-ctx.lineWidth/2,0,Math.PI*2);ctx.stroke()}else ctx.strokeRect(cx-size/2+ctx.lineWidth/2,cy-size/2+ctx.lineWidth/2,size-ctx.lineWidth,size-ctx.lineWidth);ctx.restore()}
+  const im=await exportLoadImage(src);
+  ctx.save();
+
+  const radius=size*.18;
+
+  if(shape==='circle'){
+    ctx.beginPath();
+    ctx.arc(cx,cy,size/2,0,Math.PI*2);
+    ctx.clip();
+  }else if(shape==='square'){
+    exportRoundedRect(ctx,cx-size/2,cy-size/2,size,size,radius);
+    ctx.clip();
+  }
+
+  const contain=shape==='original';
+  const base=contain
+    ? Math.min(size/im.naturalWidth,size/im.naturalHeight)
+    : Math.max(size/im.naturalWidth,size/im.naturalHeight);
+
+  const zoom=contain?1:Number(crop?.zoom||1);
+  const w=im.naturalWidth*base*zoom;
+  const h=im.naturalHeight*base*zoom;
+  const dx=contain?0:Number(crop?.x||0)/100*size;
+  const dy=contain?0:Number(crop?.y||0)/100*size;
+
+  ctx.drawImage(im,cx-w/2+dx,cy-h/2+dy,w,h);
+  ctx.restore();
+
+  if(shape!=='original'){
+    ctx.save();
+    ctx.lineWidth=Math.max(2,size*.035);
+    ctx.strokeStyle=border||'#fff';
+
+    if(shape==='circle'){
+      ctx.beginPath();
+      ctx.arc(cx,cy,size/2-ctx.lineWidth/2,0,Math.PI*2);
+      ctx.stroke();
+    }else{
+      const inset=ctx.lineWidth/2;
+      exportRoundedRect(
+        ctx,
+        cx-size/2+inset,
+        cy-size/2+inset,
+        size-ctx.lineWidth,
+        size-ctx.lineWidth,
+        Math.max(0,radius-inset)
+      );
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 async function exportFinalImage(){
   const rec=await tplGetRecord(currentTemplateId());if(!rec?.dataUrl){alert('先にテンプレ画像を入れてください。');return}
@@ -3121,7 +3245,7 @@ async function exportFinalImage(){
   const state=appState(),d=state.display||{},view=$('#canvas').getBoundingClientRect(),scale=out.width/Math.max(1,view.width),iconSize=(d.iconSize||72)*scale,outline=(d.textOutline||'off')==='on';
   for(const it of items){
     const l=state.items?.[it.id];if(!l?.placed)continue;const imageSrc=displayImage(it);if(!imageSrc)continue;
-    const itemIconSize=(Number(l.iconSize)||Number(d.iconSize)||72)*scale;
+    const itemIconSize=(Number(d.iconSize)||72)*scale;
     const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,color=(d.useIndividualTextColor!==false?(it.color||d.globalTextColor):(safeColor(l.color)||d.globalTextColor))||'#202327',border=d.iconBorderUseTextColor?color:'#fff';
     try{await exportDrawIcon(ctx,imageSrc,l.crop,cx,cy,itemIconSize,d.iconShape||'circle',border)}catch{}
     if(d.showName!==false){const fs=Math.max(11,13*scale);exportText(ctx,it.name,cx,cy+itemIconSize/2+fs,color,outline,`800 ${fs}px sans-serif`)}
