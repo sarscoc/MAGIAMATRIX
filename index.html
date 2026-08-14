@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="保存時に共有画面で「このタブ」を選択">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選ぶと、実際に見えているテンプレ画像部分だけ保存">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4127,7 +4127,7 @@ function waitCapturedFrame(video){
   });
 }
 
-async function captureCurrentTabElement(target){
+async function captureCurrentTabElement(target,template){
   if(!navigator.mediaDevices?.getDisplayMedia){
     throw new Error('このブラウザではタブのスクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
   }
@@ -4136,10 +4136,6 @@ async function captureCurrentTabElement(target){
   const video=document.createElement('video');
 
   try{
-    /*
-      Chrome will show its normal share picker.
-      preferCurrentTab makes the current MAGIA MATRIX tab the intended choice.
-    */
     stream=await navigator.mediaDevices.getDisplayMedia({
       video:{
         frameRate:{ideal:30,max:30},
@@ -4160,9 +4156,21 @@ async function captureCurrentTabElement(target){
       throw new Error('共有画面では「このタブ」を選んでください。');
     }
 
+    const targetRect=target.getBoundingClientRect();
+
     /*
-      Region Capture is the ideal path: Chrome itself crops the captured tab
-      directly to #canvas. This is a real browser capture, not a DOM redraw.
+      This is NOT the whole #canvas.
+      It is the actual painted template image inside object-fit:contain.
+      left/top are relative to #canvas.
+    */
+    const visible=getTemplateVisibleRect(target,template);
+    if(!visible.width||!visible.height){
+      throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
+    }
+
+    /*
+      Region Capture still crops Chrome's tab capture to #canvas first,
+      then we crop that captured pixel image again to the actual template.
     */
     let nativeRegionCapture=false;
     if(window.CropTarget && typeof window.CropTarget.fromElement==='function' && typeof track.cropTo==='function'){
@@ -4191,44 +4199,68 @@ async function captureCurrentTabElement(target){
     await waitCapturedFrame(video);
     await waitCapturedFrame(video);
 
-    const out=document.createElement('canvas');
-    const ctx=out.getContext('2d');
-    if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
+    let sx,sy,sw,sh;
 
     if(nativeRegionCapture){
       /*
-        After cropTo(), the video frame itself is exactly the app's template
-        canvas region. Draw the browser-captured pixels without re-layout.
+        Captured video = #canvas.
+        Convert actual template-image coordinates inside #canvas to pixels.
       */
-      out.width=Math.max(1,video.videoWidth);
-      out.height=Math.max(1,video.videoHeight);
-      ctx.drawImage(video,0,0,out.width,out.height);
+      const scaleX=video.videoWidth/Math.max(1,targetRect.width);
+      const scaleY=video.videoHeight/Math.max(1,targetRect.height);
+
+      sx=visible.left*scaleX;
+      sy=visible.top*scaleY;
+      sw=visible.width*scaleX;
+      sh=visible.height*scaleY;
     }else{
       /*
-        Fallback for Chrome versions without Region Capture:
-        crop the current-tab video using the actual viewport coordinates.
+        Captured video = entire browser tab viewport.
+        Convert the actual painted image rectangle to viewport pixels.
       */
-      const rect=target.getBoundingClientRect();
       const viewportW=Math.max(1,window.innerWidth);
       const viewportH=Math.max(1,window.innerHeight);
       const scaleX=video.videoWidth/viewportW;
       const scaleY=video.videoHeight/viewportH;
 
-      const sx=Math.max(0,rect.left*scaleX);
-      const sy=Math.max(0,rect.top*scaleY);
-      const sw=Math.max(1,Math.min(video.videoWidth-sx,rect.width*scaleX));
-      const sh=Math.max(1,Math.min(video.videoHeight-sy,rect.height*scaleY));
-
-      out.width=Math.max(1,Math.round(sw));
-      out.height=Math.max(1,Math.round(sh));
-      ctx.drawImage(video,sx,sy,sw,sh,0,0,out.width,out.height);
+      sx=(targetRect.left+visible.left)*scaleX;
+      sy=(targetRect.top+visible.top)*scaleY;
+      sw=visible.width*scaleX;
+      sh=visible.height*scaleY;
     }
 
+    sx=Math.max(0,sx);
+    sy=Math.max(0,sy);
+    sw=Math.max(1,Math.min(video.videoWidth-sx,sw));
+    sh=Math.max(1,Math.min(video.videoHeight-sy,sh));
+
+    const out=document.createElement('canvas');
+    out.width=Math.max(1,Math.round(sw));
+    out.height=Math.max(1,Math.round(sh));
+
+    const ctx=out.getContext('2d');
+    if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
+
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+
+    /*
+      Draw the real captured pixels only.
+      No DOM reconstruction, no redrawing icons, no letterbox/white margins.
+    */
+    ctx.drawImage(
+      video,
+      sx,sy,sw,sh,
+      0,0,out.width,out.height
+    );
+
     return out;
+
   }finally{
     try{video.pause()}catch{}
     video.srcObject=null;
     video.remove();
+
     if(stream){
       stream.getTracks().forEach(track=>{
         try{track.stop()}catch{}
@@ -4237,7 +4269,7 @@ async function captureCurrentTabElement(target){
   }
 }
 
-/* v77: native current-tab screenshot; no DOM recreation */
+/* v78: native screenshot cropped to the ACTUAL visible template image */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
@@ -4267,7 +4299,7 @@ async function exportFinalImage(){
     await waitForVisibleImages(target);
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-    const shot=await captureCurrentTabElement(target);
+    const shot=await captureCurrentTabElement(target,template);
     const blob=await canvasToBlob(shot,'image/png');
     const url=URL.createObjectURL(blob);
 
