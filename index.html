@@ -4063,7 +4063,42 @@ function waitForVisibleImages(root){
   }));
 }
 
-/* v75: save an actual screenshot of the visible template canvas */
+
+function getTemplateVisibleRect(target,template){
+  const tr=target.getBoundingClientRect();
+  const iw=Number(template.naturalWidth||0);
+  const ih=Number(template.naturalHeight||0);
+
+  if(!iw||!ih||!tr.width||!tr.height){
+    return {left:0,top:0,width:tr.width,height:tr.height};
+  }
+
+  const fit=Math.min(tr.width/iw,tr.height/ih);
+  const width=iw*fit;
+  const height=ih*fit;
+
+  return {
+    left:(tr.width-width)/2,
+    top:(tr.height-height)/2,
+    width,
+    height
+  };
+}
+
+function canvasToBlob(canvas,type='image/png',quality){
+  return new Promise((resolve,reject)=>{
+    try{
+      canvas.toBlob(blob=>{
+        if(blob)resolve(blob);
+        else reject(new Error('PNG conversion failed'));
+      },type,quality);
+    }catch(err){
+      reject(err);
+    }
+  });
+}
+
+/* v76: normal DOM screenshot + crop to visible template area */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
@@ -4081,11 +4116,6 @@ async function exportFinalImage(){
   }
 
   try{
-    /*
-      Finish the comment edit first.
-      This removes only the editor controls; the saved comment itself
-      remains visible exactly where it was on the template.
-    */
     if(typeof commitActiveCommentEditor==='function'){
       commitActiveCommentEditor();
     }
@@ -4094,72 +4124,108 @@ async function exportFinalImage(){
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
     const html2canvas=await ensureScreenshotRenderer();
+    const targetRect=target.getBoundingClientRect();
+    const visible=getTemplateVisibleRect(target,template);
 
-    const rect=target.getBoundingClientRect();
+    if(!visible.width||!visible.height){
+      throw new Error('template visible area is empty');
+    }
+
     const naturalWidth=Number(template.naturalWidth||0);
+    const naturalHeight=Number(template.naturalHeight||0);
+
+    const desiredScale=naturalWidth&&visible.width
+      ? naturalWidth/visible.width
+      : (window.devicePixelRatio||1);
+    const captureScale=Math.max(1,Math.min(4,desiredScale));
 
     /*
-      Keep the screenshot visually identical to #canvas, while using enough
-      pixels to preserve the template's native sharpness where practical.
+      Do not use foreignObjectRendering here.
+      It can silently return an empty/white image on this page.
+      Normal html2canvas rendering is used instead.
     */
-    const nativeScale=naturalWidth&&rect.width
-      ? naturalWidth/rect.width
-      : (window.devicePixelRatio||1);
-    const captureScale=Math.max(1,Math.min(4,nativeScale));
-
-    const options={
-      backgroundColor:getComputedStyle(target).backgroundColor||null,
+    const shot=await html2canvas(target,{
+      backgroundColor:null,
       scale:captureScale,
       useCORS:true,
       allowTaint:false,
       logging:false,
       imageTimeout:20000,
       removeContainer:true,
+      foreignObjectRendering:false,
       scrollX:0,
       scrollY:0,
-      width:Math.round(rect.width),
-      height:Math.round(rect.height),
+      width:Math.round(targetRect.width),
+      height:Math.round(targetRect.height),
       windowWidth:document.documentElement.clientWidth,
-      windowHeight:document.documentElement.clientHeight
-    };
+      windowHeight:document.documentElement.clientHeight,
+      onclone:doc=>{
+        const clonedTarget=doc.getElementById('canvas');
+        const clonedTemplate=doc.getElementById('templateImg');
+        const clonedDrop=doc.getElementById('templateDrop');
 
-    let shot;
+        if(clonedTarget)clonedTarget.classList.add('has-template');
+
+        if(clonedTemplate){
+          clonedTemplate.style.setProperty('display','block','important');
+          clonedTemplate.style.setProperty('visibility','visible','important');
+          clonedTemplate.style.setProperty('opacity','1','important');
+        }
+
+        if(clonedDrop){
+          clonedDrop.style.setProperty('display','none','important');
+        }
+
+        doc.querySelectorAll('.inline-comment-editor,.comment-direction-layer').forEach(el=>el.remove());
+        doc.querySelectorAll('*').forEach(el=>{
+          el.style.setProperty('animation','none','important');
+          el.style.setProperty('transition','none','important');
+        });
+      }
+    });
 
     /*
-      foreignObjectRendering uses the browser's own DOM/CSS rendering path,
-      which is the closest match to taking a screenshot of what is visible.
-      Fall back to html2canvas's normal renderer if the browser rejects it.
+      The template itself is object-fit:contain inside #canvas.
+      Crop out the letterbox area so the saved PNG is exactly the
+      visible template rectangle, not the surrounding workspace.
     */
-    try{
-      shot=await html2canvas(target,{
-        ...options,
-        foreignObjectRendering:true
-      });
-    }catch(firstError){
-      console.warn('Screenshot foreignObject fallback:',firstError);
-      shot=await html2canvas(target,{
-        ...options,
-        foreignObjectRendering:false
-      });
-    }
+    const sx=Math.max(0,Math.round(visible.left*captureScale));
+    const sy=Math.max(0,Math.round(visible.top*captureScale));
+    const sw=Math.max(1,Math.round(visible.width*captureScale));
+    const sh=Math.max(1,Math.round(visible.height*captureScale));
 
-    const blob=await new Promise(resolve=>shot.toBlob(resolve,'image/png'));
-    if(!blob)throw new Error('PNG conversion failed');
+    const finalCanvas=document.createElement('canvas');
+    finalCanvas.width=naturalWidth||sw;
+    finalCanvas.height=naturalHeight||sh;
 
+    const ctx=finalCanvas.getContext('2d');
+    if(!ctx)throw new Error('2D canvas unavailable');
+
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(
+      shot,
+      sx,sy,sw,sh,
+      0,0,finalCanvas.width,finalCanvas.height
+    );
+
+    const blob=await canvasToBlob(finalCanvas,'image/png');
     const url=URL.createObjectURL(blob);
+
     const a=document.createElement('a');
     a.href=url;
     a.download='MAGIA-MATRIX.png';
     document.body.appendChild(a);
     a.click();
     a.remove();
+
     setTimeout(()=>URL.revokeObjectURL(url),1500);
 
   }catch(err){
-    console.error(err);
+    console.error('image export failed:',err);
     alert(
       '画像保存に失敗しました。\n'+
-      '表示中の画像を読み込めない場合があります。ページを再読み込みしてから、もう一度お試しください。'
+      'ページを再読み込みしてから、もう一度お試しください。'
     );
   }finally{
     if(button){
@@ -4168,7 +4234,6 @@ async function exportFinalImage(){
     }
   }
 }
-
 
 function setupDisplayPanelDrag(){
   /* v51: settings are fixed on the right; dragging is disabled */
