@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選ぶと、実際に見えているテンプレ画像部分だけ保存">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、背景画像の四辺ぴったりで保存">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4156,32 +4156,26 @@ async function captureCurrentTabElement(target,template){
       throw new Error('共有画面では「このタブ」を選んでください。');
     }
 
-    const targetRect=target.getBoundingClientRect();
-
     /*
-      This is NOT the whole #canvas.
-      It is the actual painted template image inside object-fit:contain.
-      left/top are relative to #canvas.
+      v79:
+      Region Captureは使わない。
+      タブ全体の実ピクセルを1回だけ取得し、
+      画面上で実際に描かれているテンプレ画像の四辺を
+      そのまま切り出す。
     */
+    const targetRect=target.getBoundingClientRect();
     const visible=getTemplateVisibleRect(target,template);
+
     if(!visible.width||!visible.height){
       throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    /*
-      Region Capture still crops Chrome's tab capture to #canvas first,
-      then we crop that captured pixel image again to the actual template.
-    */
-    let nativeRegionCapture=false;
-    if(window.CropTarget && typeof window.CropTarget.fromElement==='function' && typeof track.cropTo==='function'){
-      try{
-        const cropTarget=await window.CropTarget.fromElement(target);
-        await track.cropTo(cropTarget);
-        nativeRegionCapture=true;
-      }catch(err){
-        console.warn('Region Capture fallback:',err);
-      }
-    }
+    const paintedRect={
+      left:targetRect.left+visible.left,
+      top:targetRect.top+visible.top,
+      width:visible.width,
+      height:visible.height
+    };
 
     video.muted=true;
     video.autoplay=true;
@@ -4199,38 +4193,19 @@ async function captureCurrentTabElement(target,template){
     await waitCapturedFrame(video);
     await waitCapturedFrame(video);
 
-    let sx,sy,sw,sh;
+    const viewportW=Math.max(1,document.documentElement.clientWidth);
+    const viewportH=Math.max(1,document.documentElement.clientHeight);
 
-    if(nativeRegionCapture){
-      /*
-        Captured video = #canvas.
-        Convert actual template-image coordinates inside #canvas to pixels.
-      */
-      const scaleX=video.videoWidth/Math.max(1,targetRect.width);
-      const scaleY=video.videoHeight/Math.max(1,targetRect.height);
+    const scaleX=video.videoWidth/viewportW;
+    const scaleY=video.videoHeight/viewportH;
 
-      sx=visible.left*scaleX;
-      sy=visible.top*scaleY;
-      sw=visible.width*scaleX;
-      sh=visible.height*scaleY;
-    }else{
-      /*
-        Captured video = entire browser tab viewport.
-        Convert the actual painted image rectangle to viewport pixels.
-      */
-      const viewportW=Math.max(1,window.innerWidth);
-      const viewportH=Math.max(1,window.innerHeight);
-      const scaleX=video.videoWidth/viewportW;
-      const scaleY=video.videoHeight/viewportH;
+    let sx=paintedRect.left*scaleX;
+    let sy=paintedRect.top*scaleY;
+    let sw=paintedRect.width*scaleX;
+    let sh=paintedRect.height*scaleY;
 
-      sx=(targetRect.left+visible.left)*scaleX;
-      sy=(targetRect.top+visible.top)*scaleY;
-      sw=visible.width*scaleX;
-      sh=visible.height*scaleY;
-    }
-
-    sx=Math.max(0,sx);
-    sy=Math.max(0,sy);
+    sx=Math.max(0,Math.min(video.videoWidth-1,sx));
+    sy=Math.max(0,Math.min(video.videoHeight-1,sy));
     sw=Math.max(1,Math.min(video.videoWidth-sx,sw));
     sh=Math.max(1,Math.min(video.videoHeight-sy,sh));
 
@@ -4243,11 +4218,6 @@ async function captureCurrentTabElement(target,template){
 
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
-
-    /*
-      Draw the real captured pixels only.
-      No DOM reconstruction, no redrawing icons, no letterbox/white margins.
-    */
     ctx.drawImage(
       video,
       sx,sy,sw,sh,
@@ -4269,7 +4239,7 @@ async function captureCurrentTabElement(target,template){
   }
 }
 
-/* v78: native screenshot cropped to the ACTUAL visible template image */
+/* v79: direct crop from current-tab pixels to the painted template rectangle */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
