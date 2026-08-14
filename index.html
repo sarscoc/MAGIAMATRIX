@@ -2057,6 +2057,135 @@ button{cursor:pointer}
   transform:translate(-50%,-50%)!important;
 }
 
+
+/* v68: comment editor saves when clicking outside */
+.inline-comment-row.outside-save-row{
+  display:grid!important;
+  grid-template-columns:72px 1fr!important;
+  align-items:center!important;
+  gap:6px!important;
+}
+.outside-save-hint{
+  font-size:8px;
+  line-height:1.2;
+  color:#667078;
+  text-align:right;
+  white-space:nowrap;
+}
+
+
+/* v69: comment editor must always sit above the icon */
+.placed{
+  overflow:visible!important;
+  isolation:auto!important;
+}
+
+.placed.comment-editing{
+  z-index:1000!important;
+}
+
+.placed-avatar{
+  position:relative!important;
+  z-index:1!important;
+}
+
+.placed-name,
+.placed-comment{
+  z-index:5!important;
+}
+
+.inline-comment-editor{
+  z-index:2000!important;
+  pointer-events:auto!important;
+  overflow:visible!important;
+}
+
+
+/* v70: direction buttons wrap around the comment editor */
+.inline-comment-editor{
+  overflow:visible!important;
+}
+
+.comment-direction-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  overflow:visible;
+  z-index:2100;
+}
+
+.comment-direction-btn{
+  position:absolute;
+  width:25px;
+  height:25px;
+  padding:0;
+  border:1px solid rgba(155,166,173,.72);
+  border-radius:50%;
+  background:rgba(255,255,255,.94);
+  color:#52616a;
+  display:grid;
+  place-items:center;
+  font:700 14px/1 system-ui,sans-serif;
+  box-shadow:0 2px 7px rgba(0,0,0,.10);
+  cursor:pointer;
+  pointer-events:auto;
+  z-index:2200;
+}
+
+.comment-direction-btn:hover{
+  background:#fff;
+  border-color:#9aa8b0;
+  transform:scale(1.06);
+}
+
+.comment-direction-btn[hidden]{
+  display:none!important;
+}
+
+/* Buttons are geographically placed around □ itself. */
+.comment-direction-btn.dir-top{
+  left:50%;
+  top:-30px;
+  transform:translateX(-50%);
+}
+.comment-direction-btn.dir-bottom{
+  left:50%;
+  bottom:-30px;
+  transform:translateX(-50%);
+}
+.comment-direction-btn.dir-left{
+  left:-30px;
+  top:50%;
+  transform:translateY(-50%);
+}
+.comment-direction-btn.dir-right{
+  right:-30px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+/* Keep hover movement centered correctly. */
+.comment-direction-btn.dir-top:hover{
+  transform:translateX(-50%) scale(1.06);
+}
+.comment-direction-btn.dir-bottom:hover{
+  transform:translateX(-50%) scale(1.06);
+}
+.comment-direction-btn.dir-left:hover{
+  transform:translateY(-50%) scale(1.06);
+}
+.comment-direction-btn.dir-right:hover{
+  transform:translateY(-50%) scale(1.06);
+}
+
+.comment-save-hint{
+  margin-top:5px;
+  text-align:right;
+  font-size:8px;
+  line-height:1.2;
+  color:#667078;
+}
+
 </style>
 </head>
 <body>
@@ -3336,49 +3465,100 @@ function syncLeftCropGuide(){
 
 let placedClickTimers=new Map();
 
+
+let activeCommentEditor=null;
+
+function commitActiveCommentEditor(){
+  if(!activeCommentEditor)return;
+  const fn=activeCommentEditor.commit;
+  activeCommentEditor=null;
+  try{fn?.()}catch(err){console.error(err)}
+}
+
 function openInlineCommentEditor(id,el){
+  commitActiveCommentEditor();
   document.querySelectorAll('.inline-comment-editor').forEach(x=>x.remove());
+  document.querySelectorAll('.placed.comment-editing').forEach(x=>x.classList.remove('comment-editing'));
 
   const s=appState(),d=s.display||{},l=s.items?.[id];
   if(!l||!el)return;
 
   let draftComment=l.comment||'';
   let draftPosition=l.commentPosition||'top';
+  let closed=false;
 
   const box=document.createElement('div');
+  el.classList.add('comment-editing');
   box.className='inline-comment-editor pos-'+draftPosition;
 
   const ta=document.createElement('textarea');
   ta.value=draftComment;
   ta.placeholder='コメント';
 
-  const row=document.createElement('div');
-  row.className='inline-comment-row';
+  const hint=document.createElement('div');
+  hint.className='outside-save-hint comment-save-hint';
+  hint.textContent='外をクリックで保存';
 
-  const posSelect=document.createElement('select');
-  posSelect.innerHTML=`
-    <option value="top">上</option>
-    <option value="bottom">下</option>
-    <option value="left">左</option>
-    <option value="right">右</option>`;
-  posSelect.value=draftPosition;
+  const directionLayer=document.createElement('div');
+  directionLayer.className='comment-direction-layer';
 
-  const close=document.createElement('button');
-  close.type='button';
-  close.className='inline-comment-close';
-  close.textContent='✓';
+  const directions=[
+    {pos:'top',label:'↑',title:'上に置く'},
+    {pos:'bottom',label:'↓',title:'下に置く'},
+    {pos:'left',label:'←',title:'左に置く'},
+    {pos:'right',label:'→',title:'右に置く'}
+  ];
 
-  row.append(posSelect,close);
-  box.append(ta,row);
+  const directionButtons=new Map();
+
+  directions.forEach(({pos,label,title})=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='comment-direction-btn dir-'+pos;
+    btn.textContent=label;
+    btn.title=title;
+    btn.setAttribute('aria-label',title);
+
+    btn.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      draftPosition=pos;
+      box.className='inline-comment-editor pos-'+draftPosition;
+      updateDirectionButtons();
+      updateCommentPreview();
+
+      requestAnimationFrame(()=>ta.focus());
+    });
+
+    directionLayer.appendChild(btn);
+    directionButtons.set(pos,btn);
+  });
+
+  box.append(ta,hint,directionLayer);
   el.appendChild(box);
+
+  const updateDirectionButtons=()=>{
+    directionButtons.forEach((btn,pos)=>{
+      /* The current side does not need a button. */
+      btn.hidden=(pos===draftPosition);
+    });
+  };
 
   const updateCommentPreview=()=>{
     let cm=el.querySelector(':scope > .placed-comment');
+
     if(draftComment.trim()){
       if(!cm){
         cm=document.createElement('div');
         el.appendChild(cm);
       }
+
       const disp=appState().display||{};
       cm.className='placed-comment comment-'+draftPosition+' '+((disp.commentBox||'on')==='on'?'with-box':'no-box');
       cm.textContent=draftComment;
@@ -3389,34 +3569,55 @@ function openInlineCommentEditor(id,el){
     }
   };
 
-  ta.addEventListener('input',()=>{
-    draftComment=ta.value;
-    updateCommentPreview();
-  });
+  const commit=()=>{
+    if(closed)return;
+    closed=true;
 
-  posSelect.addEventListener('change',()=>{
-    draftPosition=posSelect.value;
-    box.className='inline-comment-editor pos-'+draftPosition;
-    updateCommentPreview();
-  });
+    document.removeEventListener('pointerdown',outsideHandler,true);
 
-  close.onclick=e=>{
-    e.preventDefault();
-    e.stopPropagation();
     mutate(st=>{
       const local=st.items?.[id];
       if(!local)return;
       local.comment=draftComment;
       local.commentPosition=draftPosition;
     });
+
     const it=items.find(x=>x.id===id);
     if(it)it.local=appState().items[id];
+
     box.remove();
-    renderPlaced();
+    el.classList.remove('comment-editing');
+
+    if(activeCommentEditor?.box===box){
+      activeCommentEditor=null;
+    }
   };
+
+  const outsideHandler=e=>{
+    if(closed)return;
+    if(box.contains(e.target))return;
+    commit();
+  };
+
+  ta.addEventListener('input',()=>{
+    draftComment=ta.value;
+    updateCommentPreview();
+  });
+
+  ta.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      e.preventDefault();
+      commit();
+    }
+  });
 
   box.addEventListener('pointerdown',e=>e.stopPropagation());
   box.addEventListener('dblclick',e=>e.stopPropagation());
+
+  updateDirectionButtons();
+
+  activeCommentEditor={id,box,commit};
+  document.addEventListener('pointerdown',outsideHandler,true);
 
   requestAnimationFrame(()=>{
     ta.focus();
