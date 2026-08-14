@@ -1917,6 +1917,53 @@ button{cursor:pointer}
   border-radius:18%!important;
 }
 
+
+/* v64: hard reset of the legacy top-left crop bug */
+.source-avatar > img,
+.placed-avatar > img,
+.drag-ghost > img,
+.left-crop-stage > img{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  margin:0!important;
+  transform-origin:center center!important;
+  max-width:none!important;
+  max-height:none!important;
+}
+
+/* original: complete image, centered, no frame */
+.source-avatar.mode-original > img,
+.placed-avatar.mode-original > img,
+.drag-ghost.mode-original > img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  transform:translate(-50%,-50%)!important;
+}
+
+/* source / placed clipping is owned by the avatar */
+.source-avatar.mode-circle,
+.placed-avatar.mode-circle,
+.drag-ghost.mode-circle,
+.source-avatar.mode-square,
+.placed-avatar.mode-square,
+.drag-ghost.mode-square{
+  overflow:hidden!important;
+}
+
+/* no decoration at all in original mode */
+.source-avatar.mode-original,
+.placed-avatar.mode-original,
+.drag-ghost.mode-original,
+.source-avatar.mode-original.use-text-border,
+.placed-avatar.mode-original.use-text-border{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+
 </style>
 </head>
 <body>
@@ -2856,20 +2903,9 @@ function updateLeftCropPreview(){
 
   const shape=currentIconShape();
   const crop=normalizedCrop(leftCropWork);
-  sizeIconImage(img,shape);
 
   $('#leftCropZoom').value=crop.zoom;
-
-  if(shape==='original'){
-    img.style.left='50%';
-    img.style.top='50%';
-    img.style.transform='translate(-50%,-50%)';
-  }else{
-    img.style.left=(50+crop.x)+'%';
-    img.style.top=(50+crop.y)+'%';
-    img.style.transform=`translate(-50%,-50%) scale(${crop.zoom})`;
-  }
-
+  applyIconImageStyle(img,crop,shape);
   syncLeftCropGuide();
 }
 function openLeftCropEditor(id){
@@ -3071,43 +3107,58 @@ function sizeIconImage(img,shape){
   const nh=Number(img.naturalHeight||0);
 
   if(shape==='original'){
-    img.style.width='100%';
-    img.style.height='100%';
-    img.style.objectFit='contain';
+    img.style.setProperty('width','100%','important');
+    img.style.setProperty('height','100%','important');
+    img.style.setProperty('object-fit','contain','important');
     return;
   }
 
-  /* Preserve aspect ratio and cover the square frame. */
-  img.style.objectFit='fill';
+  img.style.setProperty('object-fit','fill','important');
+
+  /* Cover the square without distorting the source aspect ratio. */
   if(nw>0 && nh>0){
     if(nw>=nh){
-      img.style.width='auto';
-      img.style.height='100%';
+      img.style.setProperty('width','auto','important');
+      img.style.setProperty('height','100%','important');
     }else{
-      img.style.width='100%';
-      img.style.height='auto';
+      img.style.setProperty('width','100%','important');
+      img.style.setProperty('height','auto','important');
     }
   }else{
-    img.style.width='100%';
-    img.style.height='100%';
+    /* Temporary preload state; recalculated as soon as image loads. */
+    img.style.setProperty('width','100%','important');
+    img.style.setProperty('height','100%','important');
   }
 }
 
 function applyIconImageStyle(img,c,shape=currentIconShape()){
   if(!img)return;
+
   const crop=normalizedCrop(c);
   sizeIconImage(img,shape);
 
+  /* The center anchor must always win over legacy CSS rules. */
+  img.style.setProperty('position','absolute','important');
+  img.style.setProperty('left','50%','important');
+  img.style.setProperty('top','50%','important');
+  img.style.setProperty('margin','0','important');
+  img.style.setProperty('transform-origin','center center','important');
+
   if(shape==='original'){
-    img.style.left='50%';
-    img.style.top='50%';
-    img.style.transform='translate(-50%,-50%)';
+    img.style.setProperty('transform','translate(-50%,-50%)','important');
     return;
   }
 
-  img.style.left=(50+crop.x)+'%';
-  img.style.top=(50+crop.y)+'%';
-  img.style.transform=`translate(-50%,-50%) scale(${crop.zoom})`;
+  /*
+    Keep the image's anchor at the exact middle.
+    Saved x/y are applied as an additional translation from that center,
+    matching the left crop editor and PNG export.
+  */
+  img.style.setProperty(
+    'transform',
+    `translate(calc(-50% + ${crop.x}%),calc(-50% + ${crop.y}%)) scale(${crop.zoom})`,
+    'important'
+  );
 }
 
 function bindIconImage(img,c,shape=currentIconShape()){
