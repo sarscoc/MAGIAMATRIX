@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="保存時に共有画面で「このタブ」を選択">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4098,7 +4098,146 @@ function canvasToBlob(canvas,type='image/png',quality){
   });
 }
 
-/* v76: normal DOM screenshot + crop to visible template area */
+
+function waitVideoMetadata(video){
+  return new Promise((resolve,reject)=>{
+    if(video.readyState>=1&&video.videoWidth&&video.videoHeight){
+      resolve();
+      return;
+    }
+    const timer=setTimeout(()=>reject(new Error('画面キャプチャの準備に時間がかかっています。')),8000);
+    video.addEventListener('loadedmetadata',()=>{
+      clearTimeout(timer);
+      resolve();
+    },{once:true});
+    video.addEventListener('error',()=>{
+      clearTimeout(timer);
+      reject(new Error('画面キャプチャを開始できませんでした。'));
+    },{once:true});
+  });
+}
+
+function waitCapturedFrame(video){
+  return new Promise(resolve=>{
+    if(typeof video.requestVideoFrameCallback==='function'){
+      video.requestVideoFrameCallback(()=>resolve());
+    }else{
+      setTimeout(resolve,180);
+    }
+  });
+}
+
+async function captureCurrentTabElement(target){
+  if(!navigator.mediaDevices?.getDisplayMedia){
+    throw new Error('このブラウザではタブのスクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
+  }
+
+  let stream=null;
+  const video=document.createElement('video');
+
+  try{
+    /*
+      Chrome will show its normal share picker.
+      preferCurrentTab makes the current MAGIA MATRIX tab the intended choice.
+    */
+    stream=await navigator.mediaDevices.getDisplayMedia({
+      video:{
+        frameRate:{ideal:30,max:30},
+        displaySurface:'browser'
+      },
+      audio:false,
+      preferCurrentTab:true,
+      selfBrowserSurface:'include',
+      surfaceSwitching:'exclude',
+      monitorTypeSurfaces:'exclude'
+    });
+
+    const track=stream.getVideoTracks()[0];
+    if(!track)throw new Error('タブ映像を取得できませんでした。');
+
+    const settings=track.getSettings?.()||{};
+    if(settings.displaySurface && settings.displaySurface!=='browser'){
+      throw new Error('共有画面では「このタブ」を選んでください。');
+    }
+
+    /*
+      Region Capture is the ideal path: Chrome itself crops the captured tab
+      directly to #canvas. This is a real browser capture, not a DOM redraw.
+    */
+    let nativeRegionCapture=false;
+    if(window.CropTarget && typeof window.CropTarget.fromElement==='function' && typeof track.cropTo==='function'){
+      try{
+        const cropTarget=await window.CropTarget.fromElement(target);
+        await track.cropTo(cropTarget);
+        nativeRegionCapture=true;
+      }catch(err){
+        console.warn('Region Capture fallback:',err);
+      }
+    }
+
+    video.muted=true;
+    video.autoplay=true;
+    video.playsInline=true;
+    video.srcObject=stream;
+    video.style.position='fixed';
+    video.style.left='-100000px';
+    video.style.top='-100000px';
+    video.style.width='1px';
+    video.style.height='1px';
+    document.body.appendChild(video);
+
+    await waitVideoMetadata(video);
+    await video.play();
+    await waitCapturedFrame(video);
+    await waitCapturedFrame(video);
+
+    const out=document.createElement('canvas');
+    const ctx=out.getContext('2d');
+    if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
+
+    if(nativeRegionCapture){
+      /*
+        After cropTo(), the video frame itself is exactly the app's template
+        canvas region. Draw the browser-captured pixels without re-layout.
+      */
+      out.width=Math.max(1,video.videoWidth);
+      out.height=Math.max(1,video.videoHeight);
+      ctx.drawImage(video,0,0,out.width,out.height);
+    }else{
+      /*
+        Fallback for Chrome versions without Region Capture:
+        crop the current-tab video using the actual viewport coordinates.
+      */
+      const rect=target.getBoundingClientRect();
+      const viewportW=Math.max(1,window.innerWidth);
+      const viewportH=Math.max(1,window.innerHeight);
+      const scaleX=video.videoWidth/viewportW;
+      const scaleY=video.videoHeight/viewportH;
+
+      const sx=Math.max(0,rect.left*scaleX);
+      const sy=Math.max(0,rect.top*scaleY);
+      const sw=Math.max(1,Math.min(video.videoWidth-sx,rect.width*scaleX));
+      const sh=Math.max(1,Math.min(video.videoHeight-sy,rect.height*scaleY));
+
+      out.width=Math.max(1,Math.round(sw));
+      out.height=Math.max(1,Math.round(sh));
+      ctx.drawImage(video,sx,sy,sw,sh,0,0,out.width,out.height);
+    }
+
+    return out;
+  }finally{
+    try{video.pause()}catch{}
+    video.srcObject=null;
+    video.remove();
+    if(stream){
+      stream.getTracks().forEach(track=>{
+        try{track.stop()}catch{}
+      });
+    }
+  }
+}
+
+/* v77: native current-tab screenshot; no DOM recreation */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
@@ -4110,12 +4249,17 @@ async function exportFinalImage(){
   }
 
   const oldText=button?.textContent||'画像を保存';
+
   if(button){
     button.disabled=true;
-    button.textContent='保存中…';
+    button.textContent='このタブを選択…';
   }
 
   try{
+    /*
+      Save/close only the editing controls first.
+      The actual comment remains visible at its saved position.
+    */
     if(typeof commitActiveCommentEditor==='function'){
       commitActiveCommentEditor();
     }
@@ -4123,93 +4267,8 @@ async function exportFinalImage(){
     await waitForVisibleImages(target);
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-    const html2canvas=await ensureScreenshotRenderer();
-    const targetRect=target.getBoundingClientRect();
-    const visible=getTemplateVisibleRect(target,template);
-
-    if(!visible.width||!visible.height){
-      throw new Error('template visible area is empty');
-    }
-
-    const naturalWidth=Number(template.naturalWidth||0);
-    const naturalHeight=Number(template.naturalHeight||0);
-
-    const desiredScale=naturalWidth&&visible.width
-      ? naturalWidth/visible.width
-      : (window.devicePixelRatio||1);
-    const captureScale=Math.max(1,Math.min(4,desiredScale));
-
-    /*
-      Do not use foreignObjectRendering here.
-      It can silently return an empty/white image on this page.
-      Normal html2canvas rendering is used instead.
-    */
-    const shot=await html2canvas(target,{
-      backgroundColor:null,
-      scale:captureScale,
-      useCORS:true,
-      allowTaint:false,
-      logging:false,
-      imageTimeout:20000,
-      removeContainer:true,
-      foreignObjectRendering:false,
-      scrollX:0,
-      scrollY:0,
-      width:Math.round(targetRect.width),
-      height:Math.round(targetRect.height),
-      windowWidth:document.documentElement.clientWidth,
-      windowHeight:document.documentElement.clientHeight,
-      onclone:doc=>{
-        const clonedTarget=doc.getElementById('canvas');
-        const clonedTemplate=doc.getElementById('templateImg');
-        const clonedDrop=doc.getElementById('templateDrop');
-
-        if(clonedTarget)clonedTarget.classList.add('has-template');
-
-        if(clonedTemplate){
-          clonedTemplate.style.setProperty('display','block','important');
-          clonedTemplate.style.setProperty('visibility','visible','important');
-          clonedTemplate.style.setProperty('opacity','1','important');
-        }
-
-        if(clonedDrop){
-          clonedDrop.style.setProperty('display','none','important');
-        }
-
-        doc.querySelectorAll('.inline-comment-editor,.comment-direction-layer').forEach(el=>el.remove());
-        doc.querySelectorAll('*').forEach(el=>{
-          el.style.setProperty('animation','none','important');
-          el.style.setProperty('transition','none','important');
-        });
-      }
-    });
-
-    /*
-      The template itself is object-fit:contain inside #canvas.
-      Crop out the letterbox area so the saved PNG is exactly the
-      visible template rectangle, not the surrounding workspace.
-    */
-    const sx=Math.max(0,Math.round(visible.left*captureScale));
-    const sy=Math.max(0,Math.round(visible.top*captureScale));
-    const sw=Math.max(1,Math.round(visible.width*captureScale));
-    const sh=Math.max(1,Math.round(visible.height*captureScale));
-
-    const finalCanvas=document.createElement('canvas');
-    finalCanvas.width=naturalWidth||sw;
-    finalCanvas.height=naturalHeight||sh;
-
-    const ctx=finalCanvas.getContext('2d');
-    if(!ctx)throw new Error('2D canvas unavailable');
-
-    ctx.imageSmoothingEnabled=true;
-    ctx.imageSmoothingQuality='high';
-    ctx.drawImage(
-      shot,
-      sx,sy,sw,sh,
-      0,0,finalCanvas.width,finalCanvas.height
-    );
-
-    const blob=await canvasToBlob(finalCanvas,'image/png');
+    const shot=await captureCurrentTabElement(target);
+    const blob=await canvasToBlob(shot,'image/png');
     const url=URL.createObjectURL(blob);
 
     const a=document.createElement('a');
@@ -4222,11 +4281,13 @@ async function exportFinalImage(){
     setTimeout(()=>URL.revokeObjectURL(url),1500);
 
   }catch(err){
-    console.error('image export failed:',err);
-    alert(
-      '画像保存に失敗しました。\n'+
-      'ページを再読み込みしてから、もう一度お試しください。'
-    );
+    console.error('native screenshot export failed:',err);
+
+    if(err?.name==='NotAllowedError'){
+      alert('画像保存をキャンセルしました。保存するときは共有画面で「このタブ」を選んでください。');
+    }else{
+      alert(err?.message||'画像保存に失敗しました。');
+    }
   }finally{
     if(button){
       button.disabled=false;
