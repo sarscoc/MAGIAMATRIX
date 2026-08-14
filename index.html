@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、テンプレを画面いっぱいに拡大して1回で保存">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、Chromeの高精細フレームからテンプレ部分を1:1保存">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4129,40 +4129,29 @@ function waitCapturedFrame(video){
 
 async function captureCurrentTabElement(target,template){
   if(!navigator.mediaDevices?.getDisplayMedia){
-    throw new Error('このブラウザでは拡大スクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
+    throw new Error('このブラウザでは高精細スクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
   }
 
   let stream=null;
-  const video=document.createElement('video');
-
-  const originalParent=target.parentNode;
-  const originalNextSibling=target.nextSibling;
-  const originalTargetStyle=target.getAttribute('style');
-  const originalHtmlStyle=document.documentElement.getAttribute('style');
-  const originalBodyStyle=document.body.getAttribute('style');
-
-  function restoreCaptureLayout(){
-    if(originalNextSibling && originalNextSibling.parentNode===originalParent){
-      originalParent.insertBefore(target,originalNextSibling);
-    }else if(originalParent){
-      originalParent.appendChild(target);
-    }
-
-    if(originalTargetStyle===null)target.removeAttribute('style');
-    else target.setAttribute('style',originalTargetStyle);
-
-    if(originalHtmlStyle===null)document.documentElement.removeAttribute('style');
-    else document.documentElement.setAttribute('style',originalHtmlStyle);
-
-    if(originalBodyStyle===null)document.body.removeAttribute('style');
-    else document.body.setAttribute('style',originalBodyStyle);
-  }
+  let video=null;
+  let frameBitmap=null;
 
   try{
+    /*
+      v84 = quality-first single screenshot.
+
+      No DOM zoom.
+      No moving #canvas.
+      No tiling.
+      No stitching.
+      No post-upscale.
+
+      Chrome's selected-tab capture frame is used at its native pixel size.
+    */
     stream=await navigator.mediaDevices.getDisplayMedia({
       video:{
-        frameRate:{ideal:30,max:30},
-        displaySurface:'browser'
+        displaySurface:'browser',
+        frameRate:{ideal:5,max:10}
       },
       audio:false,
       preferCurrentTab:true,
@@ -4176,123 +4165,124 @@ async function captureCurrentTabElement(target,template){
 
     try{track.contentHint='detail'}catch{}
 
-    const settings=track.getSettings?.()||{};
-    if(settings.displaySurface && settings.displaySurface!=='browser'){
+    const selectedSettings=track.getSettings?.()||{};
+    if(selectedSettings.displaySurface && selectedSettings.displaySurface!=='browser'){
       throw new Error('共有画面では「このタブ」を選んでください。');
     }
 
-    video.muted=true;
-    video.autoplay=true;
-    video.playsInline=true;
-    video.srcObject=stream;
-    video.style.position='fixed';
-    video.style.left='-100000px';
-    video.style.top='-100000px';
-    video.style.width='1px';
-    video.style.height='1px';
-    document.body.appendChild(video);
+    /*
+      Ask Chrome not to downscale the captured surface.
+      Some Chrome versions expose resizeMode after the user selects the tab.
+      If unsupported, keep the native track unchanged rather than failing.
+    */
+    try{
+      const caps=track.getCapabilities?.()||{};
+      const constraints={};
 
-    await waitVideoMetadata(video);
-    await video.play();
-    await waitCapturedFrame(video);
-    await waitCapturedFrame(video);
+      if(Array.isArray(caps.resizeMode) && caps.resizeMode.includes('none')){
+        constraints.resizeMode='none';
+      }
+
+      if(caps.width && Number.isFinite(caps.width.max)){
+        constraints.width={ideal:caps.width.max};
+      }
+
+      if(caps.height && Number.isFinite(caps.height.max)){
+        constraints.height={ideal:caps.height.max};
+      }
+
+      if(Object.keys(constraints).length){
+        await track.applyConstraints(constraints);
+      }
+    }catch(err){
+      console.warn('high-detail capture constraints were not available:',err);
+    }
 
     /*
-      Measure the current template before moving it.
-      getTemplateVisibleRect() works for square / portrait / landscape.
+      Read the CURRENT on-screen rectangle only.
+      This supports square, portrait and landscape templates.
     */
-    const baseRect=target.getBoundingClientRect();
+    const targetRect=target.getBoundingClientRect();
     const visible=getTemplateVisibleRect(target,template);
 
-    if(!baseRect.width||!baseRect.height||!visible.width||!visible.height){
+    if(!targetRect.width||!targetRect.height||!visible.width||!visible.height){
       throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    const viewportW=Math.max(1,window.innerWidth);
-    const viewportH=Math.max(1,window.innerHeight);
+    const imageLeft=targetRect.left+visible.left;
+    const imageTop=targetRect.top+visible.top;
+    const imageRight=imageLeft+visible.width;
+    const imageBottom=imageTop+visible.height;
 
     /*
-      "普通の拡大スクショ":
-      make the ACTUAL template image as large as possible inside the current
-      browser viewport, then capture the tab ONCE.
-      No tiling. No stitching. No post-upscale.
+      Prefer ImageCapture.grabFrame(), because it returns one still bitmap
+      directly from the display-capture track at the track's actual size.
+      Fall back to a video frame if ImageCapture is unavailable.
     */
-    const margin=8;
-    const usableW=Math.max(1,viewportW-margin*2);
-    const usableH=Math.max(1,viewportH-margin*2);
+    if(typeof ImageCapture!=='undefined'){
+      try{
+        const imageCapture=new ImageCapture(track);
+        frameBitmap=await imageCapture.grabFrame();
+      }catch(err){
+        console.warn('ImageCapture fallback to video frame:',err);
+      }
+    }
 
-    const zoom=Math.max(
-      1,
-      Math.min(
-        usableW/visible.width,
-        usableH/visible.height
-      )
-    );
+    if(!frameBitmap){
+      video=document.createElement('video');
+      video.muted=true;
+      video.autoplay=true;
+      video.playsInline=true;
+      video.srcObject=stream;
+      video.style.position='fixed';
+      video.style.left='-100000px';
+      video.style.top='-100000px';
+      video.style.width='1px';
+      video.style.height='1px';
+      document.body.appendChild(video);
 
-    const enlargedImageW=visible.width*zoom;
-    const enlargedImageH=visible.height*zoom;
+      await waitVideoMetadata(video);
+      await video.play();
+      await waitCapturedFrame(video);
+      await waitCapturedFrame(video);
+
+      frameBitmap=await createImageBitmap(video);
+    }
+
+    const frameWidth=frameBitmap.width;
+    const frameHeight=frameBitmap.height;
+
+    if(!frameWidth||!frameHeight){
+      throw new Error('スクリーンショットの解像度を取得できませんでした。');
+    }
 
     /*
-      Position #canvas so the painted template image itself is centered in
-      the viewport.  The surrounding canvas may extend offscreen; that is OK.
+      A current-tab capture maps to the tab's content viewport.
+      Convert the CSS-pixel template rectangle to native capture pixels.
     */
-    const imageLeft=(viewportW-enlargedImageW)/2;
-    const imageTop=(viewportH-enlargedImageH)/2;
+    const viewportW=Math.max(1,document.documentElement.clientWidth);
+    const viewportH=Math.max(1,document.documentElement.clientHeight);
 
-    const canvasLeft=imageLeft-visible.left*zoom;
-    const canvasTop=imageTop-visible.top*zoom;
-
-    document.documentElement.style.setProperty('overflow','hidden','important');
-    document.body.style.setProperty('overflow','hidden','important');
-
-    document.body.appendChild(target);
-
-    target.style.setProperty('position','fixed','important');
-    target.style.setProperty('left',canvasLeft+'px','important');
-    target.style.setProperty('top',canvasTop+'px','important');
-    target.style.setProperty('width',baseRect.width+'px','important');
-    target.style.setProperty('height',baseRect.height+'px','important');
-    target.style.setProperty('margin','0','important');
-    target.style.setProperty('padding','0','important');
-    target.style.setProperty('border','0','important');
-    target.style.setProperty('border-radius','0','important');
-    target.style.setProperty('box-shadow','none','important');
-    target.style.setProperty('transform-origin','0 0','important');
-    target.style.setProperty('transform','scale('+zoom+')','important');
-    target.style.setProperty('z-index','2147483647','important');
-    target.style.setProperty('pointer-events','none','important');
-    target.style.setProperty('transition','none','important');
-    target.style.setProperty('animation','none','important');
+    const scaleX=frameWidth/viewportW;
+    const scaleY=frameHeight/viewportH;
 
     /*
-      Wait until Chrome has actually painted the enlarged DOM.
+      Stay INSIDE the four edges instead of adding an arbitrary white-border
+      workaround.  ceil(left/top) + floor(right/bottom) prevents an outside
+      workspace pixel from leaking into the final PNG.
     */
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    await waitCapturedFrame(video);
-    await waitCapturedFrame(video);
+    const sx=Math.max(0,Math.ceil(imageLeft*scaleX));
+    const sy=Math.max(0,Math.ceil(imageTop*scaleY));
+    const ex=Math.min(frameWidth,Math.floor(imageRight*scaleX));
+    const ey=Math.min(frameHeight,Math.floor(imageBottom*scaleY));
 
-    const scaleX=video.videoWidth/viewportW;
-    const scaleY=video.videoHeight/viewportH;
+    const sw=Math.max(1,ex-sx);
+    const sh=Math.max(1,ey-sy);
 
     /*
-      Crop directly from the ONE captured browser frame.
-      A 1 CSS px inward safety crop removes antialiased workspace edges.
+      Output is EXACTLY the number of source pixels selected above.
+      There is no resize/resampling stage.
     */
-    const inset=1;
-
-    const leftPx=Math.ceil((imageLeft+inset)*scaleX);
-    const topPx=Math.ceil((imageTop+inset)*scaleY);
-    const rightPx=Math.floor((imageLeft+enlargedImageW-inset)*scaleX);
-    const bottomPx=Math.floor((imageTop+enlargedImageH-inset)*scaleY);
-
-    const sx=Math.max(0,Math.min(video.videoWidth-1,leftPx));
-    const sy=Math.max(0,Math.min(video.videoHeight-1,topPx));
-    const ex=Math.max(sx+1,Math.min(video.videoWidth,rightPx));
-    const ey=Math.max(sy+1,Math.min(video.videoHeight,bottomPx));
-
-    const sw=ex-sx;
-    const sh=ey-sy;
-
     const out=document.createElement('canvas');
     out.width=sw;
     out.height=sh;
@@ -4300,12 +4290,9 @@ async function captureCurrentTabElement(target,template){
     const ctx=out.getContext('2d');
     if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
 
-    /*
-      1:1 copy of the browser-captured pixels.
-      We do not enlarge this canvas after capture.
-    */
+    ctx.imageSmoothingEnabled=false;
     ctx.drawImage(
-      video,
+      frameBitmap,
       sx,sy,sw,sh,
       0,0,sw,sh
     );
@@ -4313,11 +4300,15 @@ async function captureCurrentTabElement(target,template){
     return out;
 
   }finally{
-    restoreCaptureLayout();
+    if(frameBitmap && typeof frameBitmap.close==='function'){
+      try{frameBitmap.close()}catch{}
+    }
 
-    try{video.pause()}catch{}
-    video.srcObject=null;
-    video.remove();
+    if(video){
+      try{video.pause()}catch{}
+      video.srcObject=null;
+      video.remove();
+    }
 
     if(stream){
       stream.getTracks().forEach(track=>{
@@ -4327,7 +4318,7 @@ async function captureCurrentTabElement(target,template){
   }
 }
 
-/* v83: single-shot enlarged browser capture; no tiling/stitching */
+/* v84: native high-detail single-frame screenshot; 1:1 pixel crop */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
