@@ -1813,6 +1813,37 @@ button{cursor:pointer}
   background:#cfd7dc;
 }
 
+
+/* v62: source/placed icons return to normal layout */
+.source-avatar,
+.placed-avatar{
+  position:relative!important;
+}
+
+.source-avatar img,
+.placed-avatar img{
+  position:static!important;
+  left:auto!important;
+  top:auto!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  display:block!important;
+  transform-origin:center center!important;
+}
+
+/* Only the crop editor itself is explicitly centered */
+.left-crop-stage img{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  object-fit:cover!important;
+  transform-origin:center center!important;
+}
+
 </style>
 </head>
 <body>
@@ -1986,7 +2017,7 @@ button{cursor:pointer}
           <div class="group wide">
             <label>文字色</label>
             <input id="globalTextColor" type="color" value="#202327">
-            <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> 個別文字色を使う</label>
+            <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> Notionの個別文字色を使う</label>
             <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
           </div>
           <div class="settings-section-divider" aria-hidden="true"></div>
@@ -2804,7 +2835,7 @@ function refreshSourceCropPreview(id){
   if(!img)return;
   const l=appState().items?.[id]||{};
   if(currentIconShape()!=='original')cropStyle(img,l.crop);
-  else{img.style.left='50%';img.style.top='50%';img.style.transform='translate(-50%,-50%)';}
+  else{img.style.left='';img.style.top='';img.style.transform='';}
 }
 
 function renderLibrary(){
@@ -2837,7 +2868,10 @@ function renderLibrary(){
     applyShapeClass(av);
 
     if(display.iconBorderUseTextColor){
-      const sourceChosen=(display.useIndividualTextColor!==false&&it.color)||display.globalTextColor||'#202327';
+      const sourceChosen=(display.useIndividualTextColor!==false
+        ? (safeColor(it.color)||display.globalTextColor)
+        : display.globalTextColor
+      )||'#202327';
       av.classList.add('use-text-border');
       av.style.setProperty('--icon-border-color',sourceChosen);
     }
@@ -2934,9 +2968,9 @@ function cropStyle(img,c){
   const x=Number(c.x||0);
   const y=Number(c.y||0);
   const zoom=Number(c.zoom||1);
-  img.style.left=(50+x)+'%';
-  img.style.top=(50+y)+'%';
-  img.style.transform=`translate(-50%,-50%) scale(${zoom})`;
+  img.style.left='';
+  img.style.top='';
+  img.style.transform=`translate(${x}%,${y}%) scale(${zoom})`;
 }
 
 let placedClickTimers=new Map();
@@ -3057,8 +3091,8 @@ function renderPlaced(){
     el.style.setProperty('--item-icon-size',(Number(d.iconSize)||72)+'px');
 
     const chosen=(d.useIndividualTextColor!==false
-      ? (it.color||d.globalTextColor)
-      : (safeColor(l.color)||d.globalTextColor)
+      ? (safeColor(it.color)||d.globalTextColor)
+      : d.globalTextColor
     )||'#202327';
     el.style.color=chosen;
 
@@ -3293,7 +3327,7 @@ async function exportFinalImage(){
   for(const it of items){
     const l=state.items?.[it.id];if(!l?.placed)continue;const imageSrc=displayImage(it);if(!imageSrc)continue;
     const itemIconSize=(Number(d.iconSize)||72)*scale;
-    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,color=(d.useIndividualTextColor!==false?(it.color||d.globalTextColor):(safeColor(l.color)||d.globalTextColor))||'#202327',border=d.iconBorderUseTextColor?color:'#fff';
+    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,color=(d.useIndividualTextColor!==false?(safeColor(it.color)||d.globalTextColor):d.globalTextColor)||'#202327',border=d.iconBorderUseTextColor?color:'#fff';
     try{await exportDrawIcon(ctx,imageSrc,l.crop,cx,cy,itemIconSize,d.iconShape||'circle',border)}catch{}
     if(d.showName!==false){const fs=Math.max(11,13*scale);exportText(ctx,it.name,cx,cy+itemIconSize/2+fs,color,outline,`800 ${fs}px sans-serif`)}
     if(d.showComment!==false&&String(l.comment||'').trim()){
