@@ -4027,82 +4027,146 @@ async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
     ctx.restore();
   }
 }
+
+let screenshotRendererPromise=null;
+
+function ensureScreenshotRenderer(){
+  if(window.html2canvas)return Promise.resolve(window.html2canvas);
+  if(screenshotRendererPromise)return screenshotRendererPromise;
+
+  screenshotRendererPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.crossOrigin='anonymous';
+    script.referrerPolicy='no-referrer';
+    script.onload=()=>{
+      if(window.html2canvas)resolve(window.html2canvas);
+      else reject(new Error('html2canvas unavailable'));
+    };
+    script.onerror=()=>reject(new Error('html2canvas load failed'));
+    document.head.appendChild(script);
+  });
+
+  return screenshotRendererPromise;
+}
+
+function waitForVisibleImages(root){
+  const images=[...root.querySelectorAll('img')].filter(img=>getComputedStyle(img).display!=='none');
+  return Promise.all(images.map(img=>{
+    if(img.complete&&img.naturalWidth)return Promise.resolve();
+    return new Promise(resolve=>{
+      const done=()=>resolve();
+      img.addEventListener('load',done,{once:true});
+      img.addEventListener('error',done,{once:true});
+      setTimeout(done,8000);
+    });
+  }));
+}
+
+/* v75: save an actual screenshot of the visible template canvas */
 async function exportFinalImage(){
-  const rec=await tplGetRecord(currentTemplateId());if(!rec?.dataUrl){alert('先にテンプレ画像を入れてください。');return}
-  let bg;try{bg=await exportLoadImage(rec.dataUrl)}catch{alert('テンプレ画像を読み込めませんでした。');return}
-  const out=document.createElement('canvas');out.width=bg.naturalWidth||1920;out.height=bg.naturalHeight||1080;
-  const ctx=out.getContext('2d');ctx.drawImage(bg,0,0,out.width,out.height);
-  const state=appState(),d=state.display||{},view=$('#canvas').getBoundingClientRect(),scale=out.width/Math.max(1,view.width),iconSize=(d.iconSize||72)*scale,outline=(d.textOutline||'off')==='on';
-  for(const it of items){
-    const l=state.items?.[it.id];if(!l?.placed)continue;const imageSrc=displayImage(it);if(!imageSrc)continue;
-    const itemIconSize=(Number(d.iconSize)||72)*scale;
-    const color=characterTextColor(it,d),commentColor=commentTextColor(it,d);
-    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,border=d.iconBorderUseTextColor?color:'#fff';
-    try{await exportDrawIcon(ctx,imageSrc,l.crop,cx,cy,itemIconSize,d.iconShape||'circle',border)}catch{}
-    if(d.showName!==false){const fs=Math.max(11,13*scale);exportText(ctx,it.name,cx,cy+itemIconSize/2+fs,color,outline,`800 ${fs}px sans-serif`)}
-    if(d.showComment!==false&&String(l.comment||'').trim()){
-      const fs=Math.max(10,(d.commentFontSize||10)*scale);
-      ctx.font=`600 ${fs}px sans-serif`;
-      const lines=exportWrapText(ctx,l.comment,Math.min(out.width*.28,180*scale));
-      const lineH=fs*1.2;
-      const boxed=(d.commentBox||'on')==='on';
-      const pos=l.commentPosition||'top';
+  const target=$('#canvas');
+  const template=$('#templateImg');
+  const button=$('#exportImageBtn');
 
-      const padX=boxed?6*scale:0;
-      const padY=boxed?3*scale:0;
-      const widths=lines.map(t=>ctx.measureText(t).width);
-      const textW=Math.max(...widths,20);
-      const boxW=textW+padX*2;
-      const boxH=lines.length*lineH+padY*2;
+  if(!target?.classList.contains('has-template')||!template?.src){
+    alert('先にテンプレ画像を入れてください。');
+    return;
+  }
 
-      let bx,by,tx,ty,align='center';
+  const oldText=button?.textContent||'画像を保存';
+  if(button){
+    button.disabled=true;
+    button.textContent='保存中…';
+  }
 
-      if(pos==='bottom'){
-        bx=cx-boxW/2;
-        by=cy+itemIconSize/2+1*scale;
-        tx=cx;
-        ty=by+padY+lineH*.5;
-      }else if(pos==='left'){
-        bx=cx-itemIconSize/2-boxW-2*scale;
-        by=cy-boxH/2;
-        tx=boxed?bx+boxW/2:bx+boxW;
-        ty=by+padY+lineH*.5;
-        align=boxed?'center':'right';
-      }else if(pos==='right'){
-        bx=cx+itemIconSize/2+2*scale;
-        by=cy-boxH/2;
-        tx=boxed?bx+boxW/2:bx;
-        ty=by+padY+lineH*.5;
-        align=boxed?'center':'left';
-      }else{
-        bx=cx-boxW/2;
-        by=cy-itemIconSize/2-boxH-1*scale;
-        tx=cx;
-        ty=by+padY+lineH*.5;
-      }
+  try{
+    /*
+      Finish the comment edit first.
+      This removes only the editor controls; the saved comment itself
+      remains visible exactly where it was on the template.
+    */
+    if(typeof commitActiveCommentEditor==='function'){
+      commitActiveCommentEditor();
+    }
 
-      if(boxed){
-        ctx.save();
-        ctx.fillStyle='rgba(255,255,255,.90)';
-        ctx.strokeStyle='rgba(210,214,218,.95)';
-        ctx.lineWidth=Math.max(1,scale);
-        exportRoundedRect(ctx,bx,by,boxW,boxH,6*scale);
-        ctx.fill();ctx.stroke();
-        ctx.restore();
-      }
+    await waitForVisibleImages(target);
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-      const prevAlign=ctx.textAlign;
-      ctx.textAlign=align;
-      lines.forEach((line,i)=>{
-        exportText(ctx,line,tx,ty+i*lineH,commentColor,outline,`600 ${fs}px sans-serif`);
+    const html2canvas=await ensureScreenshotRenderer();
+
+    const rect=target.getBoundingClientRect();
+    const naturalWidth=Number(template.naturalWidth||0);
+
+    /*
+      Keep the screenshot visually identical to #canvas, while using enough
+      pixels to preserve the template's native sharpness where practical.
+    */
+    const nativeScale=naturalWidth&&rect.width
+      ? naturalWidth/rect.width
+      : (window.devicePixelRatio||1);
+    const captureScale=Math.max(1,Math.min(4,nativeScale));
+
+    const options={
+      backgroundColor:getComputedStyle(target).backgroundColor||null,
+      scale:captureScale,
+      useCORS:true,
+      allowTaint:false,
+      logging:false,
+      imageTimeout:20000,
+      removeContainer:true,
+      scrollX:0,
+      scrollY:0,
+      width:Math.round(rect.width),
+      height:Math.round(rect.height),
+      windowWidth:document.documentElement.clientWidth,
+      windowHeight:document.documentElement.clientHeight
+    };
+
+    let shot;
+
+    /*
+      foreignObjectRendering uses the browser's own DOM/CSS rendering path,
+      which is the closest match to taking a screenshot of what is visible.
+      Fall back to html2canvas's normal renderer if the browser rejects it.
+    */
+    try{
+      shot=await html2canvas(target,{
+        ...options,
+        foreignObjectRendering:true
       });
-      ctx.textAlign=prevAlign;
+    }catch(firstError){
+      console.warn('Screenshot foreignObject fallback:',firstError);
+      shot=await html2canvas(target,{
+        ...options,
+        foreignObjectRendering:false
+      });
+    }
+
+    const blob=await new Promise(resolve=>shot.toBlob(resolve,'image/png'));
+    if(!blob)throw new Error('PNG conversion failed');
+
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='MAGIA-MATRIX.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+
+  }catch(err){
+    console.error(err);
+    alert(
+      '画像保存に失敗しました。\n'+
+      '表示中の画像を読み込めない場合があります。ページを再読み込みしてから、もう一度お試しください。'
+    );
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent=oldText;
     }
   }
-  try{
-    const blob=await new Promise(resolve=>out.toBlob(resolve,'image/png'));if(!blob)throw new Error('blob');
-    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='MAGIA-MATRIX.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  }catch{alert('画像保存に失敗しました。外部画像がある場合は再読み込みしてから試してください。')}
 }
 
 
