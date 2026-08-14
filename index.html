@@ -4229,8 +4229,27 @@ async function captureCurrentTabElement(target,template){
       so there is no white border and no accidental change to the output ratio.
     */
     const out=document.createElement('canvas');
-    out.width=naturalWidth;
-    out.height=naturalHeight;
+
+    /*
+      Never shrink the saved image below the captured pixel size.
+      If the original template file is small (for example 500x500) but
+      the browser capture contains more pixels, keep the larger capture size.
+      Aspect ratio always follows the original template image.
+    */
+    const templateRatio=naturalWidth/naturalHeight;
+    const capturedWidth=Math.max(1,Math.round(sw));
+    const capturedHeight=Math.max(1,Math.round(sh));
+
+    let outputWidth=Math.max(naturalWidth,capturedWidth);
+    let outputHeight=Math.round(outputWidth/templateRatio);
+
+    if(outputHeight<capturedHeight){
+      outputHeight=Math.max(naturalHeight,capturedHeight);
+      outputWidth=Math.round(outputHeight*templateRatio);
+    }
+
+    out.width=Math.max(1,outputWidth);
+    out.height=Math.max(1,outputHeight);
 
     const ctx=out.getContext('2d');
     if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
@@ -4259,7 +4278,7 @@ async function captureCurrentTabElement(target,template){
   }
 }
 
-/* v80: stable inward crop; app layout/coordinates remain untouched */
+/* v81: stable inward crop + never downscale the captured template */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
