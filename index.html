@@ -2619,7 +2619,9 @@ const API_TOKEN_STORE='magiaMatrix.notion.apiToken.v1';
 const SETTINGS='magiaMatrix.redesign.settings.v1';
 const STATE='magiaMatrix.redesign.state.v1';
 const CACHE='magiaMatrix.notion.cache.v1';
+const CHARACTER_IMAGE_STORE='characterImages';
 let items=[],selectedId=null,drag=null,cropWork=null;
+let imageBlobUrls=new Map(), imageCacheMeta=new Map(), imageCachePromises=new Map();
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
@@ -2656,39 +2658,217 @@ function propNumber(p){
   const n=Number(t);
   return Number.isFinite(n)?n:null;
 }
-function propImage(p){
-  if(!p)return '';
-  if(p.type==='files'){
-    const f=p.files?.[0];return f?.file?.url||f?.external?.url||'';
+function stableRemoteImageKey(url){
+  const raw=String(url||'').trim();
+  if(!raw)return '';
+  if(raw.startsWith('data:'))return raw;
+  if(raw.startsWith('blob:'))return raw;
+  try{
+    const u=new URL(raw);
+    return u.origin+u.pathname;
+  }catch{
+    return raw;
   }
-  if(p.type==='url')return p.url||'';
-  if(p.type==='rich_text')return propText(p);
-  return '';
 }
-function pageIcon(page){
-  const i=page.icon;if(!i)return '';
-  if(i.type==='file')return i.file?.url||'';
-  if(i.type==='external')return i.external?.url||'';
+function propImageInfo(p){
+  if(!p)return {url:'',signature:'',kind:''};
+  if(p.type==='files'){
+    const f=p.files?.[0];
+    const url=f?.file?.url||f?.external?.url||'';
+    const name=f?.name||'';
+    const kind=f?.file?'file':(f?.external?'external':'files');
+    return {url,signature:url?`${kind}:${stableRemoteImageKey(url)}:${name}`:'',kind};
+  }
+  if(p.type==='url'){
+    const url=p.url||'';
+    return {url,signature:url?`url:${stableRemoteImageKey(url)}`:'',kind:'url'};
+  }
+  if(p.type==='rich_text'){
+    const url=propText(p);
+    return {url,signature:url?`rich:${stableRemoteImageKey(url)}`:'',kind:'rich_text'};
+  }
+  return {url:'',signature:'',kind:''};
+}
+function pageIconInfo(page){
+  const i=page.icon;if(!i)return {url:'',signature:'',kind:''};
+  if(i.type==='file'){
+    const url=i.file?.url||'';
+    return {url,signature:url?`pageicon-file:${stableRemoteImageKey(url)}`:'',kind:'file'};
+  }
+  if(i.type==='external'){
+    const url=i.external?.url||'';
+    return {url,signature:url?`pageicon-external:${stableRemoteImageKey(url)}`:'',kind:'external'};
+  }
   if(i.type==='emoji'){
     const c=document.createElement('canvas');c.width=c.height=128;
     const x=c.getContext('2d');x.font='88px serif';x.textAlign='center';x.textBaseline='middle';x.fillText(i.emoji,64,66);
-    return c.toDataURL('image/png');
+    const url=c.toDataURL('image/png');
+    return {url,signature:`emoji:${i.emoji}`,kind:'emoji'};
   }
-  return '';
+  return {url:'',signature:'',kind:''};
 }
 function normalize(page,cfg){
   const P=page.properties||{};
   const name=propText(P[cfg.propName])||'名称未設定';
   const url=page.url||'';
-  const notionIcon=pageIcon(page)||'';
-  const baseImage=cfg.useFavicon ? notionIcon : (propImage(P[cfg.propImage])||notionIcon);
+  const notionIcon=pageIconInfo(page);
+  const propImage=cfg.useFavicon ? {url:'',signature:'',kind:''} : propImageInfo(P[cfg.propImage]);
+  const chosen=(propImage.url ? propImage : notionIcon);
+  const baseImage=chosen.url||'';
+  const imageSignature=chosen.signature||'';
   const color=safeColor(propText(P[cfg.propColor]));
   const order=cfg.propOrder ? propNumber(P[cfg.propOrder]) : null;
-  return {id:page.id,name,url,baseImage,color,order};
+  return {id:page.id,name,url,baseImage,imageSignature,color,order};
 }
 
+async function fetchImageBlobViaWorker(sourceUrl){
+  const endpoint=WORKER_URL.replace(/\/$/,'')+'/image/proxy?url='+encodeURIComponent(sourceUrl);
+  const res=await fetch(endpoint,{method:'GET'});
+  if(!res.ok)throw new Error(`画像取得失敗 (${res.status})`);
+  return await res.blob();
+}
+function revokeItemImageUrl(id){
+  const old=imageBlobUrls.get(id);
+  if(old && old.startsWith('blob:')){
+    try{URL.revokeObjectURL(old)}catch{}
+  }
+  imageBlobUrls.delete(id);
+}
+function setItemImageUrl(id,blob){
+  revokeItemImageUrl(id);
+  const url=URL.createObjectURL(blob);
+  imageBlobUrls.set(id,url);
+  return url;
+}
+async function charImgGetRecord(id){
+  if(!id)return null;
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const r=db.transaction(CHARACTER_IMAGE_STORE).objectStore(CHARACTER_IMAGE_STORE).get(id);
+    r.onsuccess=()=>ok(r.result||null);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function charImgSetRecord(id,record){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const t=db.transaction(CHARACTER_IMAGE_STORE,'readwrite');
+    t.objectStore(CHARACTER_IMAGE_STORE).put(record,id);
+    t.oncomplete=ok;
+    t.onerror=()=>no(t.error);
+  });
+}
+async function charImgDeleteRecord(id){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const t=db.transaction(CHARACTER_IMAGE_STORE,'readwrite');
+    t.objectStore(CHARACTER_IMAGE_STORE).delete(id);
+    t.oncomplete=ok;
+    t.onerror=()=>no(t.error);
+  });
+}
+async function charImgGetAllKeys(){
+  const db=await idb();
+  return new Promise((ok,no)=>{
+    const r=db.transaction(CHARACTER_IMAGE_STORE).objectStore(CHARACTER_IMAGE_STORE).getAllKeys();
+    r.onsuccess=()=>ok(r.result||[]);
+    r.onerror=()=>no(r.error);
+  });
+}
+async function ensureItemImageCached(it,{force=false}={}){
+  if(!it?.id)return false;
+  const direct=String(it.baseImage||'').trim();
+  const sig=String(it.imageSignature||stableRemoteImageKey(direct)||'').trim();
+
+  if(!direct){
+    revokeItemImageUrl(it.id);
+    imageCacheMeta.delete(it.id);
+    await charImgDeleteRecord(it.id).catch(()=>{});
+    return false;
+  }
+  if(direct.startsWith('data:')){
+    imageBlobUrls.set(it.id,direct);
+    imageCacheMeta.set(it.id,{signature:sig,inline:true});
+    return true;
+  }
+  const memo=imageCacheMeta.get(it.id);
+  if(!force && memo?.signature===sig && imageBlobUrls.get(it.id))return true;
+
+  if(imageCachePromises.has(it.id) && !force)return imageCachePromises.get(it.id);
+
+  const task=(async()=>{
+    const record=await charImgGetRecord(it.id).catch(()=>null);
+    if(!force && record?.blob && record?.signature===sig){
+      setItemImageUrl(it.id,record.blob);
+      imageCacheMeta.set(it.id,{signature:sig,cached:true});
+      return true;
+    }
+
+    try{
+      const blob=await fetchImageBlobViaWorker(direct);
+      await charImgSetRecord(it.id,{blob,signature:sig,savedAt:Date.now(),name:it.name||'',sourceKey:stableRemoteImageKey(direct)});
+      setItemImageUrl(it.id,blob);
+      imageCacheMeta.set(it.id,{signature:sig,cached:true});
+      return true;
+    }catch(err){
+      if(record?.blob){
+        setItemImageUrl(it.id,record.blob);
+        imageCacheMeta.set(it.id,{signature:record.signature||sig,cached:true,stale:true});
+        return true;
+      }
+      revokeItemImageUrl(it.id);
+      throw err;
+    }
+  })();
+
+  imageCachePromises.set(it.id,task);
+  try{
+    return await task;
+  }finally{
+    imageCachePromises.delete(it.id);
+  }
+}
+async function warmImageCacheForItems(list,{force=false,renderOnEach=false}={}){
+  const queue=(list||[]).filter(Boolean);
+  const concurrency=4;
+  let index=0;
+  async function worker(){
+    while(index<queue.length){
+      const cur=queue[index++];
+      try{await ensureItemImageCached(cur,{force})}catch(e){console.warn('image cache failed:',cur?.name||cur?.id,e)}
+      if(renderOnEach){renderLibrary();renderPlaced();}
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(concurrency,queue.length||0)},worker));
+}
+async function ensurePlacedImagesCached(){
+  const s=appState();
+  const placed=items.filter(it=>s.items?.[it.id]?.placed);
+  await warmImageCacheForItems(placed,{force:false,renderOnEach:false});
+}
+async function syncCharacterImageCache(currentItems){
+  const validIds=new Set((currentItems||[]).map(it=>it.id));
+  for(const it of (currentItems||[])){
+    if(!it.baseImage){
+      revokeItemImageUrl(it.id);
+      imageCacheMeta.delete(it.id);
+      await charImgDeleteRecord(it.id).catch(()=>{});
+    }
+  }
+  const keys=await charImgGetAllKeys().catch(()=>[]);
+  await Promise.all(keys.filter(id=>!validIds.has(id)).map(async id=>{
+    revokeItemImageUrl(id);
+    imageCacheMeta.delete(id);
+    await charImgDeleteRecord(id).catch(()=>{});
+  }));
+}
+async function hydrateCharacterImages(currentItems){
+  await warmImageCacheForItems(currentItems,{force:false,renderOnEach:false});
+  renderLibrary();
+  renderPlaced();
+}
 function displayImage(it){
-  return it.baseImage || '';
+  return imageBlobUrls.get(it.id) || it.baseImage || '';
 }
 
 function saveLoadedCache(){
@@ -2699,6 +2879,7 @@ function saveLoadedCache(){
       name:it.name,
       url:it.url||'',
       baseImage:it.baseImage||it.image||'',
+      imageSignature:it.imageSignature||'',
       color:it.color||null,
       order:it.order??null
     }))
@@ -2761,6 +2942,9 @@ function restoreLoadedCache(){
 function clearLoadedCache(){
   localStorage.removeItem(CACHE);
   items=[];
+  imageBlobUrls.forEach((url,id)=>revokeItemImageUrl(id));
+  imageBlobUrls.clear();
+  imageCacheMeta.clear();
   renderLibrary();
   renderPlaced();
   if($('#connectionStatus'))$('#connectionStatus').textContent='保存データなし';
@@ -2843,6 +3027,12 @@ async function loadNotion(){
     saveState(s);saveLoadedCache();renderLibrary();renderPlaced();updateLastDataStatus(items.length);
     $('#connectionStatus').textContent=items.length+'件 読込済み';
     setLibraryLoading(false);
+
+    $('#connectionStatus').textContent=`${items.length}件 読込済み / 画像更新中…`;
+    await syncCharacterImageCache(items);
+    await hydrateCharacterImages(items);
+    saveLoadedCache();
+    $('#connectionStatus').textContent=items.length+'件 読込済み';
   }catch(e){
     setLibraryLoading(false);
     $('#connectionStatus').textContent='読込エラー';
@@ -2856,10 +3046,11 @@ const TEMPLATE_STATES='magiaMatrix.templateStates.v1';
 
 function idb(){
   return new Promise((ok,no)=>{
-    const r=indexedDB.open('magiaMatrixDB',2);
+    const r=indexedDB.open('magiaMatrixDB',3);
     r.onupgradeneeded=()=>{
       const db=r.result;
       if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates');
+      if(!db.objectStoreNames.contains(CHARACTER_IMAGE_STORE))db.createObjectStore(CHARACTER_IMAGE_STORE);
     };
     r.onsuccess=()=>ok(r.result);
     r.onerror=()=>no(r.error);
@@ -4416,6 +4607,7 @@ async function exportFinalImage(){
     }
 
     await waitForVisibleImages(target);
+    await ensurePlacedImagesCached();
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
     const targetRect=target.getBoundingClientRect();
@@ -4827,6 +5019,7 @@ restoreLibraryPage();
 
 restoreLoadedCache();
 restoreTemplate();
+hydrateCharacterImages(items).catch(err=>console.warn('image hydration failed',err));
 
 </script>
 </body>
