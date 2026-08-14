@@ -2007,6 +2007,56 @@ button{cursor:pointer}
   background:transparent!important;
 }
 
+
+/* v66: smooth white text outline — no glow */
+.placed-name{
+  text-shadow:none!important;
+}
+
+.placed-comment{
+  text-shadow:none!important;
+}
+
+/* Browser text outline.
+   paint-order keeps the white stroke outside/around the colored fill. */
+.text-outline{
+  text-shadow:none!important;
+  -webkit-text-stroke:2px rgba(255,255,255,.98)!important;
+  paint-order:stroke fill!important;
+}
+
+/* Slightly finer on small comment text so it stays smooth instead of chunky. */
+.placed-comment.text-outline{
+  -webkit-text-stroke:1.6px rgba(255,255,255,.98)!important;
+}
+
+.placed-name.text-outline{
+  -webkit-text-stroke:2px rgba(255,255,255,.98)!important;
+}
+
+
+/* v67: "そのまま表示" always shows the uncropped full source image */
+.source-avatar.mode-original,
+.placed-avatar.mode-original,
+.drag-ghost.mode-original,
+.source-avatar.mode-original.use-text-border,
+.placed-avatar.mode-original.use-text-border{
+  border:none!important;
+  outline:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  border-radius:0!important;
+}
+
+.source-avatar.mode-original > img,
+.placed-avatar.mode-original > img,
+.drag-ghost.mode-original > img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  transform:translate(-50%,-50%)!important;
+}
+
 </style>
 </head>
 <body>
@@ -2180,7 +2230,7 @@ button{cursor:pointer}
           <div class="group wide">
             <label>文字色</label>
             <input id="globalTextColor" type="color" value="#202327">
-            <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> Notionの個別文字色を使う</label>
+            <label class="check"><input id="useIndividualTextColor" type="checkbox"> 指定した文字色を使う</label>
             <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
           </div>
           <div class="settings-section-divider" aria-hidden="true"></div>
@@ -2202,7 +2252,7 @@ button{cursor:pointer}
           </select>
           </div>
           <div class="group">
-            <label>白縁取り</label>
+            <label>白縁取り（名前・コメント）</label>
             <select id="textOutline">
               <option value="off">なし</option>
               <option value="on">あり</option>
@@ -3231,7 +3281,6 @@ function applyIconImageStyle(img,c,shape=currentIconShape()){
   const crop=normalizedCrop(c);
   sizeIconImage(img,shape);
 
-  /* The center anchor must always win over legacy CSS rules. */
   img.style.setProperty('position','absolute','important');
   img.style.setProperty('left','50%','important');
   img.style.setProperty('top','50%','important');
@@ -3239,15 +3288,18 @@ function applyIconImageStyle(img,c,shape=currentIconShape()){
   img.style.setProperty('transform-origin','center center','important');
 
   if(shape==='original'){
+    /*
+      ORIGINAL DISPLAY:
+      Ignore crop x / y / zoom completely.
+      The saved crop data remains stored only for circle / rounded-square.
+    */
+    img.style.setProperty('width','100%','important');
+    img.style.setProperty('height','100%','important');
+    img.style.setProperty('object-fit','contain','important');
     img.style.setProperty('transform','translate(-50%,-50%)','important');
     return;
   }
 
-  /*
-    Keep the image's anchor at the exact middle.
-    Saved x/y are applied as an additional translation from that center,
-    matching the left crop editor and PNG export.
-  */
   img.style.setProperty(
     'transform',
     `translate(calc(-50% + ${crop.x}%),calc(-50% + ${crop.y}%)) scale(${crop.zoom})`,
@@ -3570,9 +3622,25 @@ function exportRoundedRect(ctx,x,y,w,h,r){
 }
 function exportText(ctx,text,x,y,color,outline,font){
   const align=ctx.textAlign||'center';
-  ctx.save();ctx.font=font;ctx.textAlign=align;ctx.textBaseline='middle';ctx.lineJoin='round';
-  if(outline){ctx.lineWidth=Math.max(3,parseFloat(font)*.20);ctx.strokeStyle='#fff';ctx.strokeText(text,x,y)}
-  ctx.fillStyle=color;ctx.fillText(text,x,y);ctx.restore();
+
+  ctx.save();
+  ctx.font=font;
+  ctx.textAlign=align;
+  ctx.textBaseline='middle';
+  ctx.lineJoin='round';
+  ctx.lineCap='round';
+  ctx.miterLimit=2;
+
+  if(outline){
+    const fontSize=Math.max(1,parseFloat(font)||12);
+    ctx.lineWidth=Math.max(2,fontSize*.16);
+    ctx.strokeStyle='rgba(255,255,255,.98)';
+    ctx.strokeText(text,x,y);
+  }
+
+  ctx.fillStyle=color;
+  ctx.fillText(text,x,y);
+  ctx.restore();
 }
 async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
   const im=await exportLoadImage(src);
@@ -3808,19 +3876,17 @@ function toggleDisplayPanel(force){
 function restoreDisplay(){
   const d=appState().display||{};
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentBox').value=d.commentBox||'on';$('#textOutline').value=d.textOutline||'off';
-  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor!==false;
+  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor===false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
-  let saveTimer=0;
-
   const readDisplay=()=>({
     iconSize:+$('#iconSize').value,
     showName:$('#showName').checked,
     showComment:$('#showComment').checked,
     globalTextColor:$('#globalTextColor').value,
-    useIndividualTextColor:$('#useIndividualTextColor').checked,
+    useIndividualTextColor:!$('#useIndividualTextColor').checked,
     iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
     iconShape:$('#iconShape').value,
     commentFontSize:Number($('#commentFontSize').value),
@@ -3829,20 +3895,20 @@ function bindDisplay(){
     fontFamily:$('#fontFamily').value
   });
 
-  const persist=()=>{
+  const update=e=>{
+    const changed=e?.target?.id||'';
+
+    /*
+      renderLibrary(), renderPlaced(), currentIconShape() all read appState().
+      Save the newly selected display mode FIRST, then redraw.
+    */
     const s=appState();
     s.display=readDisplay();
     saveState(s);
-  };
-
-  const update=e=>{
-    const s=appState();
-    s.display=readDisplay();
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
 
-    const changed=e?.target?.id||'';
     renderPlaced();
 
     if(['iconShape','iconBorderUseTextColor','globalTextColor','useIndividualTextColor'].includes(changed)){
@@ -3852,15 +3918,15 @@ function bindDisplay(){
     if(changed==='iconShape' && leftCropSelectedId){
       updateLeftCropPreview();
     }
-
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(persist,120);
   };
 
   ['iconSize','iconShape','commentFontSize','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily']
-    .forEach(id=>$('#'+id).addEventListener('input',update));
+    .forEach(id=>{
+      const el=$('#'+id);
+      el.addEventListener('input',update);
+      if(el.tagName==='SELECT')el.addEventListener('change',update);
+    });
 }
-
 
 $('#loadBtn').onclick=loadNotion;
 
