@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、背景画像の四辺ぴったりで保存">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、テンプレ画像だけを余白なしで保存">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4157,11 +4157,13 @@ async function captureCurrentTabElement(target,template){
     }
 
     /*
-      v79:
-      Region Captureは使わない。
-      タブ全体の実ピクセルを1回だけ取得し、
-      画面上で実際に描かれているテンプレ画像の四辺を
-      そのまま切り出す。
+      Stable capture path:
+      - do not change the app layout
+      - do not migrate icon coordinates
+      - capture current tab once
+      - calculate the painted template rectangle from natural aspect ratio
+      - crop slightly INSIDE all four edges so the work-area background
+        can never leak into the PNG because of sub-pixel rounding
     */
     const targetRect=target.getBoundingClientRect();
     const visible=getTemplateVisibleRect(target,template);
@@ -4170,12 +4172,13 @@ async function captureCurrentTabElement(target,template){
       throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    const paintedRect={
-      left:targetRect.left+visible.left,
-      top:targetRect.top+visible.top,
-      width:visible.width,
-      height:visible.height
-    };
+    const naturalWidth=Math.max(1,Number(template.naturalWidth||0));
+    const naturalHeight=Math.max(1,Number(template.naturalHeight||0));
+
+    const paintedLeft=targetRect.left+visible.left;
+    const paintedTop=targetRect.top+visible.top;
+    const paintedRight=paintedLeft+visible.width;
+    const paintedBottom=paintedTop+visible.height;
 
     video.muted=true;
     video.autoplay=true;
@@ -4199,25 +4202,42 @@ async function captureCurrentTabElement(target,template){
     const scaleX=video.videoWidth/viewportW;
     const scaleY=video.videoHeight/viewportH;
 
-    let sx=paintedRect.left*scaleX;
-    let sy=paintedRect.top*scaleY;
-    let sw=paintedRect.width*scaleX;
-    let sh=paintedRect.height*scaleY;
+    /*
+      Two CSS pixels inward is intentional.
+      It is small enough to be visually negligible, but large enough to
+      eliminate the 1–2 px white/anti-aliased strip seen at the edge.
+      Works for square, portrait, and landscape templates alike.
+    */
+    const insetCss=2;
 
-    sx=Math.max(0,Math.min(video.videoWidth-1,sx));
-    sy=Math.max(0,Math.min(video.videoHeight-1,sy));
-    sw=Math.max(1,Math.min(video.videoWidth-sx,sw));
-    sh=Math.max(1,Math.min(video.videoHeight-sy,sh));
+    const leftPx=Math.ceil((paintedLeft+insetCss)*scaleX);
+    const topPx=Math.ceil((paintedTop+insetCss)*scaleY);
+    const rightPx=Math.floor((paintedRight-insetCss)*scaleX);
+    const bottomPx=Math.floor((paintedBottom-insetCss)*scaleY);
 
+    const sx=Math.max(0,Math.min(video.videoWidth-1,leftPx));
+    const sy=Math.max(0,Math.min(video.videoHeight-1,topPx));
+    const ex=Math.max(sx+1,Math.min(video.videoWidth,rightPx));
+    const ey=Math.max(sy+1,Math.min(video.videoHeight,bottomPx));
+
+    const sw=ex-sx;
+    const sh=ey-sy;
+
+    /*
+      Final PNG follows the ORIGINAL template aspect ratio/dimensions.
+      The tiny inward safety crop is stretched back over those dimensions,
+      so there is no white border and no accidental change to the output ratio.
+    */
     const out=document.createElement('canvas');
-    out.width=Math.max(1,Math.round(sw));
-    out.height=Math.max(1,Math.round(sh));
+    out.width=naturalWidth;
+    out.height=naturalHeight;
 
     const ctx=out.getContext('2d');
     if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
 
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
+
     ctx.drawImage(
       video,
       sx,sy,sw,sh,
@@ -4239,7 +4259,7 @@ async function captureCurrentTabElement(target,template){
   }
 }
 
-/* v79: direct crop from current-tab pixels to the painted template rectangle */
+/* v80: stable inward crop; app layout/coordinates remain untouched */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
