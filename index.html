@@ -1844,6 +1844,79 @@ button{cursor:pointer}
   transform-origin:center center!important;
 }
 
+
+/* v63: authoritative icon/crop rendering */
+.source-avatar,
+.placed-avatar,
+.drag-ghost{
+  position:relative!important;
+  box-sizing:border-box!important;
+}
+
+.source-avatar img,
+.placed-avatar img,
+.drag-ghost img{
+  position:absolute!important;
+  left:50%;
+  top:50%;
+  margin:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  display:block!important;
+  transform-origin:center center!important;
+  -webkit-user-drag:none!important;
+}
+
+/* ORIGINAL = no frame at all */
+.source-avatar.mode-original,
+.placed-avatar.mode-original,
+.drag-ghost.mode-original,
+.source-avatar.mode-original.use-text-border,
+.placed-avatar.mode-original.use-text-border{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+}
+
+/* CROPPED = image can never escape the frame */
+.source-avatar.mode-circle,
+.placed-avatar.mode-circle,
+.drag-ghost.mode-circle{
+  border-radius:50%!important;
+  overflow:hidden!important;
+}
+.source-avatar.mode-square,
+.placed-avatar.mode-square,
+.drag-ghost.mode-square{
+  border-radius:18%!important;
+  overflow:hidden!important;
+}
+
+/* crop editor */
+.left-crop-stage{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.left-crop-stage img{
+  position:absolute!important;
+  left:50%;
+  top:50%;
+  margin:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:fill!important;
+  transform-origin:center center!important;
+}
+.left-crop-stage .crop-circle.mode-circle{
+  border-radius:50%!important;
+}
+.left-crop-stage .crop-circle.mode-square{
+  border-radius:18%!important;
+}
+
 </style>
 </head>
 <body>
@@ -2000,7 +2073,7 @@ button{cursor:pointer}
             <select id="iconShape">
               <option value="original">そのまま表示</option>
               <option value="circle">丸に切り抜き</option>
-              <option value="square">四角に切り抜き</option>
+              <option value="square">角丸四角に切り抜き</option>
             </select>
           </div>
 
@@ -2778,24 +2851,43 @@ function applyShapeClass(el,shape=currentIconShape()){
 let leftCropSelectedId=null;
 let leftCropWork={x:0,y:0,zoom:1};
 function updateLeftCropPreview(){
-  const img=$('#leftCropImg');if(!img)return;
-  const x=Number(leftCropWork.x||0);
-  const y=Number(leftCropWork.y||0);
-  const zoom=Number(leftCropWork.zoom||1);
-  img.style.left=(50+x)+'%';
-  img.style.top=(50+y)+'%';
-  img.style.transform=`translate(-50%,-50%) scale(${zoom})`;
-  $('#leftCropZoom').value=zoom;
+  const img=$('#leftCropImg');
+  if(!img)return;
+
+  const shape=currentIconShape();
+  const crop=normalizedCrop(leftCropWork);
+  sizeIconImage(img,shape);
+
+  $('#leftCropZoom').value=crop.zoom;
+
+  if(shape==='original'){
+    img.style.left='50%';
+    img.style.top='50%';
+    img.style.transform='translate(-50%,-50%)';
+  }else{
+    img.style.left=(50+crop.x)+'%';
+    img.style.top=(50+crop.y)+'%';
+    img.style.transform=`translate(-50%,-50%) scale(${crop.zoom})`;
+  }
+
+  syncLeftCropGuide();
 }
 function openLeftCropEditor(id){
-  const it=items.find(x=>x.id===id);if(!it)return;
+  const it=items.find(x=>x.id===id);
+  if(!it)return;
+
   const s=appState(),l=s.items?.[id]||{};
   leftCropSelectedId=id;
-  leftCropWork={x:Number(l.crop?.x||0),y:Number(l.crop?.y||0),zoom:Number(l.crop?.zoom||1)};
+  leftCropWork=normalizedCrop(l.crop);
+
   $('#leftCropName').textContent=it.name||'切り抜き';
-  $('#leftCropImg').src=displayImage(it)||'';
+
+  const img=$('#leftCropImg');
+  img.onload=()=>updateLeftCropPreview();
+  img.src=displayImage(it)||'';
+
   $('#leftCropEditor').hidden=false;
-  const guide=$('#leftCropStage .crop-circle');if(guide)guide.classList.toggle('mode-square',currentIconShape()==='square');
+  syncLeftCropGuide();
   requestAnimationFrame(updateLeftCropPreview);
 }
 function closeLeftCropEditor(){$('#leftCropEditor').hidden=true;leftCropSelectedId=null}
@@ -2834,8 +2926,7 @@ function refreshSourceCropPreview(id){
   const img=card.querySelector('.source-avatar img');
   if(!img)return;
   const l=appState().items?.[id]||{};
-  if(currentIconShape()!=='original')cropStyle(img,l.crop);
-  else{img.style.left='';img.style.top='';img.style.transform='';}
+  applyIconImageStyle(img,l.crop,currentIconShape());
 }
 
 function renderLibrary(){
@@ -2883,7 +2974,7 @@ function renderLibrary(){
     try{im.fetchPriority='low'}catch{}
     im.src=displayImage(it)||'';
     im.onerror=()=>im.style.display='none';
-    if(currentIconShape()!=='original')cropStyle(im,l.crop);
+    bindIconImage(im,l.crop,currentIconShape());
     av.append(im);
 
     const nm=document.createElement('div');
@@ -2917,7 +3008,10 @@ function startLibraryDrag(e,it,card){
   ghost.className='drag-ghost';
   applyShapeClass(ghost);
   const gi=document.createElement('img');
+  gi.draggable=false;
   gi.src=displayImage(it)||'';
+  const ghostLocal=appState().items?.[it.id]||{};
+  bindIconImage(gi,ghostLocal.crop,currentIconShape());
   ghost.appendChild(gi);
   ghost.style.left='0';
   ghost.style.top='0';
@@ -2963,15 +3057,85 @@ function placeItem(id,x,y){
   const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
   renderPlaced();
 }
-function cropStyle(img,c){
-  c=c||{x:0,y:0,zoom:1};
-  const x=Number(c.x||0);
-  const y=Number(c.y||0);
-  const zoom=Number(c.zoom||1);
-  img.style.left='';
-  img.style.top='';
-  img.style.transform=`translate(${x}%,${y}%) scale(${zoom})`;
+
+function normalizedCrop(c){
+  return {
+    x:Number(c?.x||0),
+    y:Number(c?.y||0),
+    zoom:Math.max(.25,Math.min(5,Number(c?.zoom||1)))
+  };
 }
+
+function sizeIconImage(img,shape){
+  const nw=Number(img.naturalWidth||0);
+  const nh=Number(img.naturalHeight||0);
+
+  if(shape==='original'){
+    img.style.width='100%';
+    img.style.height='100%';
+    img.style.objectFit='contain';
+    return;
+  }
+
+  /* Preserve aspect ratio and cover the square frame. */
+  img.style.objectFit='fill';
+  if(nw>0 && nh>0){
+    if(nw>=nh){
+      img.style.width='auto';
+      img.style.height='100%';
+    }else{
+      img.style.width='100%';
+      img.style.height='auto';
+    }
+  }else{
+    img.style.width='100%';
+    img.style.height='100%';
+  }
+}
+
+function applyIconImageStyle(img,c,shape=currentIconShape()){
+  if(!img)return;
+  const crop=normalizedCrop(c);
+  sizeIconImage(img,shape);
+
+  if(shape==='original'){
+    img.style.left='50%';
+    img.style.top='50%';
+    img.style.transform='translate(-50%,-50%)';
+    return;
+  }
+
+  img.style.left=(50+crop.x)+'%';
+  img.style.top=(50+crop.y)+'%';
+  img.style.transform=`translate(-50%,-50%) scale(${crop.zoom})`;
+}
+
+function bindIconImage(img,c,shape=currentIconShape()){
+  const apply=()=>applyIconImageStyle(img,c,shape);
+  apply();
+  if(!img.complete || !img.naturalWidth){
+    img.addEventListener('load',apply,{once:true});
+  }
+}
+
+function cropStyle(img,c){
+  applyIconImageStyle(img,c,currentIconShape());
+}
+
+function syncLeftCropGuide(){
+  const guide=$('#leftCropStage .crop-circle');
+  if(!guide)return;
+  const shape=currentIconShape();
+
+  guide.classList.remove('mode-circle','mode-square');
+  if(shape==='original'){
+    guide.style.display='none';
+  }else{
+    guide.style.display='block';
+    guide.classList.add(shape==='square'?'mode-square':'mode-circle');
+  }
+}
+
 
 let placedClickTimers=new Map();
 
@@ -3111,7 +3275,7 @@ function renderPlaced(){
     im.decoding='async';
     im.src=displayImage(it)||'';
     im.onerror=()=>im.style.display='none';
-    if(currentIconShape()!=='original')cropStyle(im,l.crop);
+    bindIconImage(im,l.crop,currentIconShape());
     av.appendChild(im);
     el.appendChild(av);
 
@@ -3526,14 +3690,23 @@ function bindDisplay(){
     saveState(s);
   };
 
-  const update=()=>{
+  const update=e=>{
     const s=appState();
     s.display=readDisplay();
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
 
+    const changed=e?.target?.id||'';
     renderPlaced();
+
+    if(['iconShape','iconBorderUseTextColor','globalTextColor','useIndividualTextColor'].includes(changed)){
+      renderLibrary();
+    }
+
+    if(changed==='iconShape' && leftCropSelectedId){
+      updateLeftCropPreview();
+    }
 
     clearTimeout(saveTimer);
     saveTimer=setTimeout(persist,120);
