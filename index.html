@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、テンプレ画像だけを余白なしで保存">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、テンプレを画面いっぱいに拡大して1回で保存">画像を保存</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4129,11 +4129,34 @@ function waitCapturedFrame(video){
 
 async function captureCurrentTabElement(target,template){
   if(!navigator.mediaDevices?.getDisplayMedia){
-    throw new Error('このブラウザではタブのスクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
+    throw new Error('このブラウザでは拡大スクリーンショット保存に対応していません。Chromeで公開ページを開いてください。');
   }
 
   let stream=null;
   const video=document.createElement('video');
+
+  const originalParent=target.parentNode;
+  const originalNextSibling=target.nextSibling;
+  const originalTargetStyle=target.getAttribute('style');
+  const originalHtmlStyle=document.documentElement.getAttribute('style');
+  const originalBodyStyle=document.body.getAttribute('style');
+
+  function restoreCaptureLayout(){
+    if(originalNextSibling && originalNextSibling.parentNode===originalParent){
+      originalParent.insertBefore(target,originalNextSibling);
+    }else if(originalParent){
+      originalParent.appendChild(target);
+    }
+
+    if(originalTargetStyle===null)target.removeAttribute('style');
+    else target.setAttribute('style',originalTargetStyle);
+
+    if(originalHtmlStyle===null)document.documentElement.removeAttribute('style');
+    else document.documentElement.setAttribute('style',originalHtmlStyle);
+
+    if(originalBodyStyle===null)document.body.removeAttribute('style');
+    else document.body.setAttribute('style',originalBodyStyle);
+  }
 
   try{
     stream=await navigator.mediaDevices.getDisplayMedia({
@@ -4151,34 +4174,12 @@ async function captureCurrentTabElement(target,template){
     const track=stream.getVideoTracks()[0];
     if(!track)throw new Error('タブ映像を取得できませんでした。');
 
+    try{track.contentHint='detail'}catch{}
+
     const settings=track.getSettings?.()||{};
     if(settings.displaySurface && settings.displaySurface!=='browser'){
       throw new Error('共有画面では「このタブ」を選んでください。');
     }
-
-    /*
-      Stable capture path:
-      - do not change the app layout
-      - do not migrate icon coordinates
-      - capture current tab once
-      - calculate the painted template rectangle from natural aspect ratio
-      - crop slightly INSIDE all four edges so the work-area background
-        can never leak into the PNG because of sub-pixel rounding
-    */
-    const targetRect=target.getBoundingClientRect();
-    const visible=getTemplateVisibleRect(target,template);
-
-    if(!visible.width||!visible.height){
-      throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
-    }
-
-    const naturalWidth=Math.max(1,Number(template.naturalWidth||0));
-    const naturalHeight=Math.max(1,Number(template.naturalHeight||0));
-
-    const paintedLeft=targetRect.left+visible.left;
-    const paintedTop=targetRect.top+visible.top;
-    const paintedRight=paintedLeft+visible.width;
-    const paintedBottom=paintedTop+visible.height;
 
     video.muted=true;
     video.autoplay=true;
@@ -4196,24 +4197,93 @@ async function captureCurrentTabElement(target,template){
     await waitCapturedFrame(video);
     await waitCapturedFrame(video);
 
-    const viewportW=Math.max(1,document.documentElement.clientWidth);
-    const viewportH=Math.max(1,document.documentElement.clientHeight);
+    /*
+      Measure the current template before moving it.
+      getTemplateVisibleRect() works for square / portrait / landscape.
+    */
+    const baseRect=target.getBoundingClientRect();
+    const visible=getTemplateVisibleRect(target,template);
+
+    if(!baseRect.width||!baseRect.height||!visible.width||!visible.height){
+      throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
+    }
+
+    const viewportW=Math.max(1,window.innerWidth);
+    const viewportH=Math.max(1,window.innerHeight);
+
+    /*
+      "普通の拡大スクショ":
+      make the ACTUAL template image as large as possible inside the current
+      browser viewport, then capture the tab ONCE.
+      No tiling. No stitching. No post-upscale.
+    */
+    const margin=8;
+    const usableW=Math.max(1,viewportW-margin*2);
+    const usableH=Math.max(1,viewportH-margin*2);
+
+    const zoom=Math.max(
+      1,
+      Math.min(
+        usableW/visible.width,
+        usableH/visible.height
+      )
+    );
+
+    const enlargedImageW=visible.width*zoom;
+    const enlargedImageH=visible.height*zoom;
+
+    /*
+      Position #canvas so the painted template image itself is centered in
+      the viewport.  The surrounding canvas may extend offscreen; that is OK.
+    */
+    const imageLeft=(viewportW-enlargedImageW)/2;
+    const imageTop=(viewportH-enlargedImageH)/2;
+
+    const canvasLeft=imageLeft-visible.left*zoom;
+    const canvasTop=imageTop-visible.top*zoom;
+
+    document.documentElement.style.setProperty('overflow','hidden','important');
+    document.body.style.setProperty('overflow','hidden','important');
+
+    document.body.appendChild(target);
+
+    target.style.setProperty('position','fixed','important');
+    target.style.setProperty('left',canvasLeft+'px','important');
+    target.style.setProperty('top',canvasTop+'px','important');
+    target.style.setProperty('width',baseRect.width+'px','important');
+    target.style.setProperty('height',baseRect.height+'px','important');
+    target.style.setProperty('margin','0','important');
+    target.style.setProperty('padding','0','important');
+    target.style.setProperty('border','0','important');
+    target.style.setProperty('border-radius','0','important');
+    target.style.setProperty('box-shadow','none','important');
+    target.style.setProperty('transform-origin','0 0','important');
+    target.style.setProperty('transform','scale('+zoom+')','important');
+    target.style.setProperty('z-index','2147483647','important');
+    target.style.setProperty('pointer-events','none','important');
+    target.style.setProperty('transition','none','important');
+    target.style.setProperty('animation','none','important');
+
+    /*
+      Wait until Chrome has actually painted the enlarged DOM.
+    */
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    await waitCapturedFrame(video);
+    await waitCapturedFrame(video);
 
     const scaleX=video.videoWidth/viewportW;
     const scaleY=video.videoHeight/viewportH;
 
     /*
-      Two CSS pixels inward is intentional.
-      It is small enough to be visually negligible, but large enough to
-      eliminate the 1–2 px white/anti-aliased strip seen at the edge.
-      Works for square, portrait, and landscape templates alike.
+      Crop directly from the ONE captured browser frame.
+      A 1 CSS px inward safety crop removes antialiased workspace edges.
     */
-    const insetCss=2;
+    const inset=1;
 
-    const leftPx=Math.ceil((paintedLeft+insetCss)*scaleX);
-    const topPx=Math.ceil((paintedTop+insetCss)*scaleY);
-    const rightPx=Math.floor((paintedRight-insetCss)*scaleX);
-    const bottomPx=Math.floor((paintedBottom-insetCss)*scaleY);
+    const leftPx=Math.ceil((imageLeft+inset)*scaleX);
+    const topPx=Math.ceil((imageTop+inset)*scaleY);
+    const rightPx=Math.floor((imageLeft+enlargedImageW-inset)*scaleX);
+    const bottomPx=Math.floor((imageTop+enlargedImageH-inset)*scaleY);
 
     const sx=Math.max(0,Math.min(video.videoWidth-1,leftPx));
     const sy=Math.max(0,Math.min(video.videoHeight-1,topPx));
@@ -4223,49 +4293,28 @@ async function captureCurrentTabElement(target,template){
     const sw=ex-sx;
     const sh=ey-sy;
 
-    /*
-      Final PNG follows the ORIGINAL template aspect ratio/dimensions.
-      The tiny inward safety crop is stretched back over those dimensions,
-      so there is no white border and no accidental change to the output ratio.
-    */
     const out=document.createElement('canvas');
-
-    /*
-      Never shrink the saved image below the captured pixel size.
-      If the original template file is small (for example 500x500) but
-      the browser capture contains more pixels, keep the larger capture size.
-      Aspect ratio always follows the original template image.
-    */
-    const templateRatio=naturalWidth/naturalHeight;
-    const capturedWidth=Math.max(1,Math.round(sw));
-    const capturedHeight=Math.max(1,Math.round(sh));
-
-    let outputWidth=Math.max(naturalWidth,capturedWidth);
-    let outputHeight=Math.round(outputWidth/templateRatio);
-
-    if(outputHeight<capturedHeight){
-      outputHeight=Math.max(naturalHeight,capturedHeight);
-      outputWidth=Math.round(outputHeight*templateRatio);
-    }
-
-    out.width=Math.max(1,outputWidth);
-    out.height=Math.max(1,outputHeight);
+    out.width=sw;
+    out.height=sh;
 
     const ctx=out.getContext('2d');
     if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
 
-    ctx.imageSmoothingEnabled=true;
-    ctx.imageSmoothingQuality='high';
-
+    /*
+      1:1 copy of the browser-captured pixels.
+      We do not enlarge this canvas after capture.
+    */
     ctx.drawImage(
       video,
       sx,sy,sw,sh,
-      0,0,out.width,out.height
+      0,0,sw,sh
     );
 
     return out;
 
   }finally{
+    restoreCaptureLayout();
+
     try{video.pause()}catch{}
     video.srcObject=null;
     video.remove();
@@ -4278,7 +4327,7 @@ async function captureCurrentTabElement(target,template){
   }
 }
 
-/* v81: stable inward crop + never downscale the captured template */
+/* v83: single-shot enlarged browser capture; no tiling/stitching */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
