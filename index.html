@@ -2198,10 +2198,10 @@ button{cursor:pointer}
 }
 
 
-/* v71: direction controls live INSIDE the comment editor frame */
+/* v96: make comment direction buttons larger and easier to tap */
 .inline-comment-editor{
   overflow:visible!important;
-  padding:14px 18px!important;
+  padding:20px 30px!important;
 }
 
 .inline-comment-editor textarea{
@@ -2218,29 +2218,32 @@ button{cursor:pointer}
 
 .comment-direction-btn{
   position:absolute!important;
-  width:18px!important;
-  height:18px!important;
-  min-width:0!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
   padding:0!important;
   border:0!important;
-  border-radius:0!important;
+  border-radius:10px!important;
   background:transparent!important;
   box-shadow:none!important;
   color:#667078!important;
   display:grid!important;
   place-items:center!important;
-  font:400 12px/1 "Yu Gothic","Hiragino Sans",system-ui,sans-serif!important;
+  font:400 22px/1 "Yu Gothic","Hiragino Sans",system-ui,sans-serif!important;
   cursor:pointer!important;
   pointer-events:auto!important;
-  opacity:.78!important;
+  opacity:.95!important;
   transform:none!important;
+  line-height:1!important;
 }
 
 .comment-direction-btn:hover{
-  background:rgba(255,255,255,.55)!important;
+  background:transparent!important;
   color:#39464e!important;
   opacity:1!important;
   transform:none!important;
+  box-shadow:none!important;
 }
 
 .comment-direction-btn[hidden]{
@@ -2250,21 +2253,21 @@ button{cursor:pointer}
 /* top / bottom / left / right — all stay inside the outer frame */
 .comment-direction-btn.dir-top{
   left:50%!important;
-  top:1px!important;
+  top:4px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-bottom{
   left:50%!important;
-  bottom:1px!important;
+  bottom:4px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-left{
-  left:1px!important;
+  left:4px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
 .comment-direction-btn.dir-right{
-  right:1px!important;
+  right:4px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
