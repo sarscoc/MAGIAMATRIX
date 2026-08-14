@@ -4352,7 +4352,7 @@ function blobDownload(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
-/* v87: exact-size clean render -> automatic PNG download */
+/* v88: stable direct canvas export based on template pixels */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
@@ -4369,7 +4369,46 @@ async function exportFinalImage(){
     button.textContent='保存中…';
   }
 
-  let shotWin=null;
+  const px=n=>Math.max(0,Number(n)||0);
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+  const fontSizeOf=font=>{
+    const m=String(font||'').match(/([0-9.]+)px/);
+    return m?Number(m[1]):12;
+  };
+
+  function drawMultilineText(ctx,text,x,y,maxWidth,color,outline,font,lineHeight,align='center'){
+    const lines=exportWrapText(ctx,String(text||''),maxWidth);
+    const totalHeight=lineHeight*Math.max(1,lines.length);
+    ctx.save();
+    ctx.font=font;
+    ctx.textAlign=align;
+    ctx.textBaseline='middle';
+    ctx.lineJoin='round';
+    ctx.lineCap='round';
+    ctx.miterLimit=2;
+    const fontSize=fontSizeOf(font);
+    if(outline){
+      ctx.lineWidth=Math.max(2,fontSize*.16);
+      ctx.strokeStyle='rgba(255,255,255,.98)';
+    }
+    ctx.fillStyle=color;
+    lines.forEach((line,i)=>{
+      const yy=y-totalHeight/2+lineHeight*(i+.5);
+      if(outline && String(line||''))ctx.strokeText(line,x,yy);
+      ctx.fillText(line,x,yy);
+    });
+    ctx.restore();
+    return {lines,width:Math.min(maxWidth,Math.max(0,...lines.map(line=>ctx.measureText(line).width))),height:totalHeight};
+  }
+
+  function measureWrappedText(ctx,text,maxWidth,font,lineHeight){
+    ctx.save();
+    ctx.font=font;
+    const lines=exportWrapText(ctx,String(text||''),maxWidth);
+    const width=Math.min(maxWidth,Math.max(0,...lines.map(line=>ctx.measureText(line).width)));
+    ctx.restore();
+    return {lines,width,height:lineHeight*Math.max(1,lines.length)};
+  }
 
   try{
     if(typeof commitActiveCommentEditor==='function'){
@@ -4386,189 +4425,150 @@ async function exportFinalImage(){
       throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    const naturalWidth=Math.max(
-      1,
-      Number(template.naturalWidth||Math.round(visible.width))
-    );
-    const naturalHeight=Math.max(
-      1,
-      Number(template.naturalHeight||Math.round(visible.height))
-    );
+    const naturalWidth=Math.max(1,Number(template.naturalWidth||Math.round(visible.width)));
+    const naturalHeight=Math.max(1,Number(template.naturalHeight||Math.round(visible.height)));
+    const renderScale=naturalWidth/visible.width;
 
-    /*
-      The clean capture document itself is exactly the template's original
-      pixel size/aspect ratio. No human cropping and no surrounding workspace.
-    */
-    const scale=naturalWidth/visible.width;
+    const out=document.createElement('canvas');
+    out.width=naturalWidth;
+    out.height=naturalHeight;
+    const ctx=out.getContext('2d');
+    if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
+    ctx.clearRect(0,0,naturalWidth,naturalHeight);
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
 
-    const clone=target.cloneNode(true);
+    const templateImage=await exportLoadImage(template.src);
+    ctx.drawImage(templateImage,0,0,naturalWidth,naturalHeight);
 
-    clone.querySelectorAll(
-      '.template-drop,.canvas-guide,.inline-comment-editor,.comment-direction-layer'
-    ).forEach(el=>el.remove());
+    const s=appState();
+    const d=s.display||{};
+    const shape=currentIconShape();
+    const outlineOn=(d.textOutline||'off')==='on';
+    const fontFamily=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    const defaultIconSize=px(d.iconSize||72);
+    const nameFontSize=13*renderScale;
+    const nameLineHeight=nameFontSize*1.2;
+    const commentFontSize=(px(d.commentFontSize||10))*renderScale;
+    const commentLineHeight=commentFontSize*1.35;
+    const commentGap=8*renderScale;
+    const nameGap=5*renderScale;
+    const iconLabelWidth=(defaultIconSize+70)*renderScale;
+    const commentMaxWidth=180*renderScale;
+    const commentPadX=7*renderScale;
+    const commentPadY=4*renderScale;
+    const commentRadius=7*renderScale;
 
-    clone.querySelectorAll('img').forEach(img=>{
-      img.loading='eager';
-      img.decoding='sync';
-      img.draggable=false;
-      img.setAttribute('crossorigin','anonymous');
-    });
+    for(const it of items){
+      const l=s.items?.[it.id];
+      if(!l?.placed)continue;
 
-    clone.removeAttribute('id');
-    clone.style.setProperty('position','absolute','important');
-    clone.style.setProperty('left',(-visible.left*scale)+'px','important');
-    clone.style.setProperty('top',(-visible.top*scale)+'px','important');
-    clone.style.setProperty('width',targetRect.width+'px','important');
-    clone.style.setProperty('height',targetRect.height+'px','important');
-    clone.style.setProperty('min-width','0','important');
-    clone.style.setProperty('min-height','0','important');
-    clone.style.setProperty('margin','0','important');
-    clone.style.setProperty('padding','0','important');
-    clone.style.setProperty('border','0','important');
-    clone.style.setProperty('outline','0','important');
-    clone.style.setProperty('border-radius','0','important');
-    clone.style.setProperty('box-shadow','none','important');
-    clone.style.setProperty('transform-origin','0 0','important');
-    clone.style.setProperty('transform','scale('+scale+')','important');
-    clone.style.setProperty('overflow','visible','important');
+      const cssX=(px(l.x)/100)*targetRect.width;
+      const cssY=(px(l.y)/100)*targetRect.height;
+      const cx=((cssX-visible.left)/visible.width)*naturalWidth;
+      const cy=((cssY-visible.top)/visible.height)*naturalHeight;
+      const iconSize=(px(l.iconSize)||defaultIconSize)*renderScale;
 
-    const styleText=[...document.querySelectorAll('style')]
-      .map(el=>el.textContent||'')
-      .join('\n');
+      const charColor=characterTextColor(it,d);
+      const comColor=commentTextColor(it,d);
+      const borderColor=d.iconBorderUseTextColor ? (charColor||'#202327') : '#ffffff';
+      const src=displayImage(it)||'';
 
-    /*
-      Keep about:blank because it inherits the opener's origin.
-      It is used only as a clean render surface and closes automatically.
-    */
-    shotWin=window.open('about:blank','_blank');
+      if(src){
+        try{
+          await exportDrawIcon(ctx,src,l.crop,cx,cy,iconSize,shape,borderColor);
+        }catch(err){
+          console.warn('icon export skipped:',it?.name||it?.id,err);
+        }
+      }
 
-    if(!shotWin){
-      throw new Error(
-        '画像保存用タブを開けませんでした。ポップアップを許可してから、もう一度お試しください。'
-      );
+      if(d.showName!==false && String(it.name||'').trim()){
+        const font=`800 ${nameFontSize}px ${fontFamily}`;
+        const metrics=measureWrappedText(ctx,it.name,iconLabelWidth,font,nameLineHeight);
+        drawMultilineText(
+          ctx,
+          it.name,
+          cx,
+          cy+iconSize/2+nameGap+metrics.height/2,
+          iconLabelWidth,
+          charColor,
+          outlineOn,
+          font,
+          nameLineHeight,
+          'center'
+        );
+      }
+
+      const commentText=String(l.comment||'').trim();
+      if(d.showComment!==false && commentText){
+        const pos=l.commentPosition||'top';
+        const font=`500 ${commentFontSize}px ${fontFamily}`;
+        const metrics=measureWrappedText(
+          ctx,
+          commentText,
+          Math.max(12,commentMaxWidth-((d.commentBox||'on')==='on'?commentPadX*2:0)),
+          font,
+          commentLineHeight
+        );
+
+        const boxOn=(d.commentBox||'on')==='on';
+        const bubbleW=boxOn ? metrics.width+commentPadX*2 : metrics.width;
+        const bubbleH=boxOn ? metrics.height+commentPadY*2 : metrics.height;
+
+        let bx=0,by=0,tx=0,ty=0,align='center';
+        if(pos==='bottom'){
+          bx=cx-bubbleW/2;
+          by=cy+iconSize/2+commentGap;
+          tx=cx;
+          ty=by+(boxOn?commentPadY:0)+metrics.height/2;
+          align='center';
+        }else if(pos==='left'){
+          bx=cx-iconSize/2-commentGap-bubbleW;
+          by=cy-bubbleH/2;
+          tx=bx+(boxOn?commentPadX:0)+metrics.width/2;
+          ty=cy;
+          align='center';
+        }else if(pos==='right'){
+          bx=cx+iconSize/2+commentGap;
+          by=cy-bubbleH/2;
+          tx=bx+(boxOn?commentPadX:0)+metrics.width/2;
+          ty=cy;
+          align='center';
+        }else{
+          bx=cx-bubbleW/2;
+          by=cy-iconSize/2-commentGap-bubbleH;
+          tx=cx;
+          ty=by+(boxOn?commentPadY:0)+metrics.height/2;
+          align='center';
+        }
+
+        if(boxOn){
+          ctx.save();
+          exportRoundedRect(ctx,bx,by,bubbleW,bubbleH,commentRadius);
+          ctx.fillStyle='rgba(255,255,255,.88)';
+          ctx.fill();
+          ctx.lineWidth=Math.max(1,renderScale*.9);
+          ctx.strokeStyle='rgba(210,214,218,.95)';
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawMultilineText(
+          ctx,
+          commentText,
+          tx,
+          ty,
+          Math.max(12,commentMaxWidth-(boxOn?commentPadX*2:0)),
+          comColor,
+          outlineOn,
+          font,
+          commentLineHeight,
+          align
+        );
+      }
     }
 
-    const doc=shotWin.document;
-    doc.open();
-    doc.write(`<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<title>MAGIA MATRIX — 画像保存中</title>
-<style>
-${styleText}
-html,body{
-  margin:0!important;
-  padding:0!important;
-  width:${naturalWidth}px!important;
-  height:${naturalHeight}px!important;
-  min-width:${naturalWidth}px!important;
-  min-height:${naturalHeight}px!important;
-  overflow:hidden!important;
-  background:transparent!important;
-}
-#magiaCaptureRoot{
-  position:relative!important;
-  display:block!important;
-  width:${naturalWidth}px!important;
-  height:${naturalHeight}px!important;
-  min-width:${naturalWidth}px!important;
-  min-height:${naturalHeight}px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  outline:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-  background:transparent!important;
-}
-</style>
-</head>
-<body><div id="magiaCaptureRoot"></div></body>
-</html>`);
-    doc.close();
-
-    const root=doc.getElementById('magiaCaptureRoot');
-    root.appendChild(doc.importNode(clone,true));
-
-    const captureCanvas=root.firstElementChild;
-    if(captureCanvas){
-      captureCanvas.style.setProperty('background','transparent','important');
-      captureCanvas.style.setProperty('border','0','important');
-      captureCanvas.style.setProperty('outline','0','important');
-      captureCanvas.style.setProperty('border-radius','0','important');
-      captureCanvas.style.setProperty('box-shadow','none','important');
-    }
-
-    /*
-      Re-load external images with crossorigin set BEFORE the request.
-      data:/blob: images remain untouched.
-    */
-    root.querySelectorAll('img').forEach(img=>{
-      const src=img.getAttribute('src')||'';
-      if(!src||src.startsWith('data:')||src.startsWith('blob:'))return;
-      img.removeAttribute('src');
-      img.crossOrigin='anonymous';
-      img.src=src;
-    });
-
-    await waitCaptureDocumentImages(root);
-
-    if(doc.fonts?.ready){
-      try{await doc.fonts.ready}catch{}
-    }
-
-    await new Promise(resolve=>
-      shotWin.requestAnimationFrame(()=>
-        shotWin.requestAnimationFrame(resolve)
-      )
-    );
-
-    /*
-      html2canvas is now used only on the CLEAN, exact-size capture document.
-      Unlike the earlier failed approach, there is no large white workspace,
-      object-fit letterbox area, or manual coordinate crop in this stage.
-    */
-    const renderer=await ensureScreenshotRenderer();
-
-    const rendered=await renderer(root,{
-      backgroundColor:null,
-      scale:1,
-      useCORS:true,
-      allowTaint:false,
-      logging:false,
-      imageTimeout:20000,
-      removeContainer:true,
-      foreignObjectRendering:false,
-      width:naturalWidth,
-      height:naturalHeight,
-      windowWidth:naturalWidth,
-      windowHeight:naturalHeight,
-      scrollX:0,
-      scrollY:0
-    });
-
-    /*
-      Force exact output dimensions without any human cropping.
-      Usually rendered is already exact; this is only a defensive guard.
-    */
-    let finalCanvas=rendered;
-
-    if(rendered.width!==naturalWidth||rendered.height!==naturalHeight){
-      finalCanvas=document.createElement('canvas');
-      finalCanvas.width=naturalWidth;
-      finalCanvas.height=naturalHeight;
-      const ctx=finalCanvas.getContext('2d');
-      if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
-      ctx.drawImage(
-        rendered,
-        0,0,rendered.width,rendered.height,
-        0,0,naturalWidth,naturalHeight
-      );
-    }
-
-    const blob=await canvasToBlob(finalCanvas,'image/png');
+    const blob=await canvasToBlob(out,'image/png');
     blobDownload(blob,'MAGIA-MATRIX.png');
 
     if($('#connectionStatus')){
@@ -4577,16 +4577,12 @@ html,body{
     }
 
   }catch(err){
-    console.error('automatic screenshot save failed:',err);
+    console.error('stable export failed:',err);
     alert(
       (err?.message||'画像保存に失敗しました。')+
       '\n\nページを再読み込みして、もう一度お試しください。'
     );
   }finally{
-    if(shotWin && !shotWin.closed){
-      try{shotWin.close()}catch{}
-    }
-
     if(button){
       button.disabled=false;
       button.textContent=oldText;
