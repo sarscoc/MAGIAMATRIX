@@ -2186,6 +2186,109 @@ button{cursor:pointer}
   color:#667078;
 }
 
+
+/* v71: direction controls live INSIDE the comment editor frame */
+.inline-comment-editor{
+  overflow:visible!important;
+  padding:14px 18px!important;
+}
+
+.inline-comment-editor textarea{
+  width:100%!important;
+  box-sizing:border-box!important;
+}
+
+.comment-direction-layer{
+  position:absolute!important;
+  inset:0!important;
+  pointer-events:none!important;
+  z-index:2100!important;
+}
+
+.comment-direction-btn{
+  position:absolute!important;
+  width:18px!important;
+  height:18px!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#667078!important;
+  display:grid!important;
+  place-items:center!important;
+  font:400 12px/1 "Yu Gothic","Hiragino Sans",system-ui,sans-serif!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  opacity:.78!important;
+  transform:none!important;
+}
+
+.comment-direction-btn:hover{
+  background:rgba(255,255,255,.55)!important;
+  color:#39464e!important;
+  opacity:1!important;
+  transform:none!important;
+}
+
+.comment-direction-btn[hidden]{
+  display:none!important;
+}
+
+/* top / bottom / left / right — all stay inside the outer frame */
+.comment-direction-btn.dir-top{
+  left:50%!important;
+  top:1px!important;
+  transform:translateX(-50%)!important;
+}
+.comment-direction-btn.dir-bottom{
+  left:50%!important;
+  bottom:1px!important;
+  transform:translateX(-50%)!important;
+}
+.comment-direction-btn.dir-left{
+  left:1px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+}
+.comment-direction-btn.dir-right{
+  right:1px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+}
+
+.comment-direction-btn.dir-top:hover{
+  transform:translateX(-50%)!important;
+}
+.comment-direction-btn.dir-bottom:hover{
+  transform:translateX(-50%)!important;
+}
+.comment-direction-btn.dir-left:hover{
+  transform:translateY(-50%)!important;
+}
+.comment-direction-btn.dir-right:hover{
+  transform:translateY(-50%)!important;
+}
+
+/* Old save-hint text is gone */
+.comment-save-hint,
+.outside-save-hint.comment-save-hint{
+  display:none!important;
+}
+
+
+/* v72: crop action is the icon itself — no extra crop button */
+.source-crop-btn{
+  display:none!important;
+}
+
+
+/* v73: comment color can follow character color or use its own color */
+#commentTextColor:disabled{
+  cursor:not-allowed;
+}
+
 </style>
 </head>
 <body>
@@ -2370,6 +2473,12 @@ button{cursor:pointer}
           </div>
 
           <div class="group wide">
+            <label class="check"><input id="commentUseCharacterColor" type="checkbox" checked> キャラの文字色を使う</label>
+            <label>コメント文字色</label>
+            <input id="commentTextColor" type="color" value="#202327">
+          </div>
+
+          <div class="group wide">
             <label>コメント文字サイズ <span id="commentFontSizeValue">10</span>px</label>
             <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
           </div>
@@ -2500,7 +2609,7 @@ let items=[],selectedId=null,drag=null,cropWork=null;
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',iconBorderUseTextColor:false,fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -3208,7 +3317,6 @@ function renderLibrary(){
     card.draggable=false;
 
     card.addEventListener('pointerdown',e=>{
-      if(e.target.closest('.source-crop-btn'))return;
       startLibraryDrag(e,it,card);
     });
 
@@ -3239,18 +3347,7 @@ function renderLibrary(){
     nm.className='source-name';
     nm.textContent=it.name;
 
-    const cropBtn=document.createElement('button');
-    cropBtn.type='button';
-    cropBtn.className='source-crop-btn';
-    cropBtn.textContent='切り抜き';
-    cropBtn.addEventListener('pointerdown',e=>e.stopPropagation());
-    cropBtn.onclick=e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      openLeftCropEditor(it.id);
-    };
-
-    card.append(av,nm,cropBtn);
+    card.append(av,nm);
     frag.append(card);
   });
 
@@ -3495,18 +3592,14 @@ function openInlineCommentEditor(id,el){
   ta.value=draftComment;
   ta.placeholder='コメント';
 
-  const hint=document.createElement('div');
-  hint.className='outside-save-hint comment-save-hint';
-  hint.textContent='外をクリックで保存';
-
   const directionLayer=document.createElement('div');
   directionLayer.className='comment-direction-layer';
 
   const directions=[
-    {pos:'top',label:'↑',title:'上に置く'},
-    {pos:'bottom',label:'↓',title:'下に置く'},
-    {pos:'left',label:'←',title:'左に置く'},
-    {pos:'right',label:'→',title:'右に置く'}
+    {pos:'top',label:'︿',title:'上に置く'},
+    {pos:'bottom',label:'﹀',title:'下に置く'},
+    {pos:'left',label:'〈',title:'左に置く'},
+    {pos:'right',label:'〉',title:'右に置く'}
   ];
 
   const directionButtons=new Map();
@@ -3540,7 +3633,7 @@ function openInlineCommentEditor(id,el){
     directionButtons.set(pos,btn);
   });
 
-  box.append(ta,hint,directionLayer);
+  box.append(ta,directionLayer);
   el.appendChild(box);
 
   const updateDirectionButtons=()=>{
@@ -3560,9 +3653,11 @@ function openInlineCommentEditor(id,el){
       }
 
       const disp=appState().display||{};
+      const item=items.find(x=>x.id===id);
       cm.className='placed-comment comment-'+draftPosition+' '+((disp.commentBox||'on')==='on'?'with-box':'no-box');
       cm.textContent=draftComment;
       cm.style.fontSize=(disp.commentFontSize||10)+'px';
+      cm.style.color=commentTextColor(item,disp);
       applyTextOutline(cm);
     }else{
       cm?.remove();
@@ -3633,6 +3728,29 @@ function setupPlacedClickBehavior(el,id){
   });
 }
 
+
+function characterTextColor(it,d){
+  return (d.useIndividualTextColor!==false
+    ? (safeColor(it?.color)||d.globalTextColor)
+    : d.globalTextColor
+  )||'#202327';
+}
+
+function commentTextColor(it,d){
+  const characterColor=characterTextColor(it,d);
+  return d.commentUseCharacterColor!==false
+    ? characterColor
+    : (safeColor(d.commentTextColor)||'#202327');
+}
+
+function syncCommentColorControl(){
+  const useCharacter=$('#commentUseCharacterColor');
+  const picker=$('#commentTextColor');
+  if(!useCharacter||!picker)return;
+  picker.disabled=useCharacter.checked;
+  picker.style.opacity=useCharacter.checked?'.45':'1';
+}
+
 function renderPlaced(){
   const c=$('#canvas');
   c.querySelectorAll('.placed').forEach(e=>e.remove());
@@ -3652,10 +3770,8 @@ function renderPlaced(){
     el.style.top=(l.y??50)+'%';
     el.style.setProperty('--item-icon-size',(Number(d.iconSize)||72)+'px');
 
-    const chosen=(d.useIndividualTextColor!==false
-      ? (safeColor(it.color)||d.globalTextColor)
-      : d.globalTextColor
-    )||'#202327';
+    const chosen=characterTextColor(it,d);
+    const commentChosen=commentTextColor(it,d);
     el.style.color=chosen;
 
     const av=document.createElement('div');
@@ -3690,6 +3806,7 @@ function renderPlaced(){
       cm.className='placed-comment comment-'+pos+' '+((d.commentBox||'on')==='on'?'with-box':'no-box');
       cm.textContent=l.comment;
       cm.style.fontSize=(d.commentFontSize||10)+'px';
+      cm.style.color=commentChosen;
       el.appendChild(cm);
     }
 
@@ -3905,7 +4022,8 @@ async function exportFinalImage(){
   for(const it of items){
     const l=state.items?.[it.id];if(!l?.placed)continue;const imageSrc=displayImage(it);if(!imageSrc)continue;
     const itemIconSize=(Number(d.iconSize)||72)*scale;
-    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,color=(d.useIndividualTextColor!==false?(safeColor(it.color)||d.globalTextColor):d.globalTextColor)||'#202327',border=d.iconBorderUseTextColor?color:'#fff';
+    const color=characterTextColor(it,d),commentColor=commentTextColor(it,d);
+    const cx=(l.x??50)/100*out.width,cy=(l.y??50)/100*out.height,border=d.iconBorderUseTextColor?color:'#fff';
     try{await exportDrawIcon(ctx,imageSrc,l.crop,cx,cy,itemIconSize,d.iconShape||'circle',border)}catch{}
     if(d.showName!==false){const fs=Math.max(11,13*scale);exportText(ctx,it.name,cx,cy+itemIconSize/2+fs,color,outline,`800 ${fs}px sans-serif`)}
     if(d.showComment!==false&&String(l.comment||'').trim()){
@@ -3962,7 +4080,7 @@ async function exportFinalImage(){
       const prevAlign=ctx.textAlign;
       ctx.textAlign=align;
       lines.forEach((line,i)=>{
-        exportText(ctx,line,tx,ty+i*lineH,color,outline,`600 ${fs}px sans-serif`);
+        exportText(ctx,line,tx,ty+i*lineH,commentColor,outline,`600 ${fs}px sans-serif`);
       });
       ctx.textAlign=prevAlign;
     }
@@ -4079,7 +4197,10 @@ function restoreDisplay(){
   $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentBox').value=d.commentBox||'on';$('#textOutline').value=d.textOutline||'off';
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor===false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
+  $('#commentUseCharacterColor').checked=d.commentUseCharacterColor!==false;
+  $('#commentTextColor').value=safeColor(d.commentTextColor)||'#202327';
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  syncCommentColorControl();
 }
 function bindDisplay(){
   const readDisplay=()=>({
@@ -4088,6 +4209,8 @@ function bindDisplay(){
     showComment:$('#showComment').checked,
     globalTextColor:$('#globalTextColor').value,
     useIndividualTextColor:!$('#useIndividualTextColor').checked,
+    commentUseCharacterColor:$('#commentUseCharacterColor').checked,
+    commentTextColor:$('#commentTextColor').value,
     iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
     iconShape:$('#iconShape').value,
     commentFontSize:Number($('#commentFontSize').value),
@@ -4109,6 +4232,7 @@ function bindDisplay(){
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
+    syncCommentColorControl();
 
     renderPlaced();
 
@@ -4121,7 +4245,7 @@ function bindDisplay(){
     }
   };
 
-  ['iconSize','iconShape','commentFontSize','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily']
+  ['iconSize','iconShape','commentFontSize','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','fontFamily']
     .forEach(id=>{
       const el=$('#'+id);
       el.addEventListener('input',update);
