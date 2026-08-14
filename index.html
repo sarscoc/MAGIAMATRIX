@@ -1588,6 +1588,94 @@ button{cursor:pointer}
 #settings .display-head{cursor:default!important;user-select:auto!important}
 #settingsMenuBtn{position:absolute!important;top:8px!important;right:8px!important;z-index:140!important;display:grid!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}
 
+
+/* v51 toolbar: settings button is not floating */
+.stage-area-toolbar{
+  align-items:flex-start!important;
+}
+.stage-toolbar-actions{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:flex-end!important;
+  gap:7px!important;
+}
+.stage-toolbar-stack{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:4px;
+}
+#settingsMenuBtn.toolbar-settings-btn{
+  position:static!important;
+  inset:auto!important;
+  width:30px!important;
+  min-width:30px!important;
+  height:24px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  z-index:auto!important;
+}
+
+/* settings itself stays anchored on the right and only opens/closes */
+#settings{
+  position:absolute!important;
+  top:8px!important;
+  right:8px!important;
+  left:auto!important;
+  width:240px!important;
+  max-width:calc(100% - 16px)!important;
+  z-index:120!important;
+  transform:none!important;
+}
+#settings .display-head{
+  cursor:default!important;
+  user-select:auto!important;
+}
+
+/* placed icons: pointer dragging is authoritative */
+.placed{
+  touch-action:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  cursor:grab!important;
+  pointer-events:auto!important;
+}
+.placed.dragging{
+  cursor:grabbing!important;
+  z-index:80!important;
+}
+.placed-avatar,
+.placed-avatar img{
+  pointer-events:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-user-drag:none!important;
+}
+.placed-name,
+.placed-comment{
+  pointer-events:none!important;
+}
+
+
+.stage-toolbar-row{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:4px;
+}
+.stage-toolbar-stack{display:contents}
+#settingsMenuBtn.toolbar-settings-btn{
+  height:28px!important;
+  width:30px!important;
+  min-width:30px!important;
+  flex:0 0 30px!important;
+}
+
 </style>
 </head>
 <body>
@@ -1713,7 +1801,10 @@ button{cursor:pointer}
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
           <button class="btn" id="exportImageBtn" type="button">画像を保存</button>
-          <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
+          <div class="stage-toolbar-row">
+            <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
+            <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
+          </div>
         </div>
       </div>
       <div class="stage">
@@ -1806,7 +1897,7 @@ button{cursor:pointer}
 
           
         </aside>
-        <button class="settings-menu-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
+        
       </div>
     </section>
   </div>
@@ -2010,21 +2101,27 @@ function restoreLibraryPage(){
 function restoreLoadedCache(){
   const c=loadJSON(CACHE,null);
   if(!c?.items?.length)return false;
-  const s=appState();s.items||={};
+
+  const s=appState();
+  s.items||={};
+
   items=c.items.map(it=>{
-    if(!s.items[it.id])s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    if(!s.items[it.id]){
+      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,iconSize:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    }
     return {...it,local:s.items[it.id]};
   });
+
   saveState(s);
-  // Current template has priority over generic cached placement state.
-  const tid=currentTemplateId();
-  if(tid)restoreTemplatePlacementState(tid);
-  else{renderLibrary();renderPlaced()}
+
   if($('#connectionStatus')){
     const d=new Date(c.savedAt);
     $('#connectionStatus').textContent=`前回データ ${items.length}件`;
     $('#connectionStatus').title=`保存日時: ${d.toLocaleString()}`;
   }
+  updateLastDataStatus(items.length);
+
+  // Rendering is intentionally deferred to restoreTemplate(), once.
   return true;
 }
 function clearLoadedCache(){
@@ -2531,9 +2628,15 @@ function closeLeftCropEditor(){$('#leftCropEditor').hidden=true;leftCropSelected
 function saveLeftCrop(){
   if(!leftCropSelectedId)return;
   const id=leftCropSelectedId;
-  mutate(s=>{const l=s.items[id]||(s.items[id]={});l.crop={...leftCropWork}});
-  const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
-  renderLibrary();renderPlaced();closeLeftCropEditor();
+  mutate(s=>{
+    const l=s.items[id]||(s.items[id]={});
+    l.crop={...leftCropWork};
+  });
+  const it=items.find(x=>x.id===id);
+  if(it)it.local=appState().items[id];
+  refreshSourceCropPreview(id);
+  renderPlaced();
+  closeLeftCropEditor();
 }
 function setupLeftCrop(){
   const stage=$('#leftCropStage'),zoom=$('#leftCropZoom');if(!stage||!zoom)return;
@@ -2550,22 +2653,82 @@ function setupLeftCrop(){
   $('#leftCropSave').onclick=saveLeftCrop;
 }
 
+
+function refreshSourceCropPreview(id){
+  const card=document.querySelector(`.source-card[data-id="${CSS.escape(id)}"]`);
+  if(!card)return;
+  const img=card.querySelector('.source-avatar img');
+  if(!img)return;
+  const l=appState().items?.[id]||{};
+  if(currentIconShape()!=='original')cropStyle(img,l.crop);
+  else img.style.transform='';
+}
+
 function renderLibrary(){
-  const list=$('#iconList');list.innerHTML='';
+  const list=$('#iconList');
+  list.replaceChildren();
   $('#libraryCount').textContent=items.length+'件';
-  if(!items.length){list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';return}
+
+  if(!items.length){
+    list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';
+    return;
+  }
+
   const s=appState(),display=s.display||{};
+  const frag=document.createDocumentFragment();
+
   items.forEach(it=>{
     const l=s.items?.[it.id]||{};
-    const card=document.createElement('div');card.className='source-card';card.draggable=false;
-    card.addEventListener('pointerdown',e=>{if(e.target.closest('.source-crop-btn'))return;startLibraryDrag(e,it,card)});
-    const av=document.createElement('div');av.className='source-avatar';applyShapeClass(av);
-    if(display.iconBorderUseTextColor){const sourceChosen=(display.useIndividualTextColor!==false&&it.color)||display.globalTextColor||'#202327';av.classList.add('use-text-border');av.style.setProperty('--icon-border-color',sourceChosen)}
-    const im=document.createElement('img');im.src=displayImage(it)||'';im.onerror=()=>im.style.display='none';if(currentIconShape()!=='original')cropStyle(im,l.crop);av.append(im);
-    const nm=document.createElement('div');nm.className='source-name';nm.textContent=it.name;
-    const cropBtn=document.createElement('button');cropBtn.type='button';cropBtn.className='source-crop-btn';cropBtn.textContent='切り抜き';cropBtn.addEventListener('pointerdown',e=>e.stopPropagation());cropBtn.onclick=e=>{e.preventDefault();e.stopPropagation();openLeftCropEditor(it.id)};
-    card.append(av,nm,cropBtn);list.append(card);
+    const card=document.createElement('div');
+    card.className='source-card';
+    card.dataset.id=it.id;
+    card.draggable=false;
+
+    card.addEventListener('pointerdown',e=>{
+      if(e.target.closest('.source-crop-btn'))return;
+      startLibraryDrag(e,it,card);
+    });
+
+    const av=document.createElement('div');
+    av.className='source-avatar';
+    applyShapeClass(av);
+
+    if(display.iconBorderUseTextColor){
+      const sourceChosen=(display.useIndividualTextColor!==false&&it.color)||display.globalTextColor||'#202327';
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',sourceChosen);
+    }
+
+    const im=document.createElement('img');
+    im.draggable=false;
+    im.loading='lazy';
+    im.decoding='async';
+    try{im.fetchPriority='low'}catch{}
+    im.src=displayImage(it)||'';
+    im.onerror=()=>im.style.display='none';
+    if(currentIconShape()!=='original')cropStyle(im,l.crop);
+    av.append(im);
+
+    const nm=document.createElement('div');
+    nm.className='source-name';
+    nm.textContent=it.name;
+
+    const cropBtn=document.createElement('button');
+    cropBtn.type='button';
+    cropBtn.className='source-crop-btn';
+    cropBtn.textContent='切り抜き';
+    cropBtn.addEventListener('pointerdown',e=>e.stopPropagation());
+    cropBtn.onclick=e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openLeftCropEditor(it.id);
+    };
+
+    card.append(av,nm,cropBtn);
+    frag.append(card);
   });
+
+  list.append(frag);
 }
 function startLibraryDrag(e,it,card){
   if(e.button!=null&&e.button!==0)return;
@@ -2632,22 +2795,111 @@ let placedClickTimers=new Map();
 
 function openInlineCommentEditor(id,el){
   document.querySelectorAll('.inline-comment-editor').forEach(x=>x.remove());
-  const s=appState(),d=s.display||{},l=s.items?.[id];if(!l||!el)return;
-  const pos=l.commentPosition||d.commentPosition||'top';
-  const box=document.createElement('div');box.className='inline-comment-editor pos-'+pos;
-  const ta=document.createElement('textarea');ta.value=l.comment||'';ta.placeholder='コメント';
-  const row=document.createElement('div');row.className='inline-comment-row';
-  const posSelect=document.createElement('select');posSelect.innerHTML='<option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option>';posSelect.value=pos;
-  const close=document.createElement('button');close.type='button';close.className='inline-comment-close';close.textContent='✓';row.append(posSelect,close);
-  const sizeWrap=document.createElement('div');sizeWrap.className='inline-size-row';const sizeLabel=document.createElement('span');sizeLabel.textContent='アイコン';const size=document.createElement('input');size.type='range';size.min='32';size.max='180';size.step='1';size.value=Number(l.iconSize)||Number(d.iconSize)||72;const sizeValue=document.createElement('span');sizeValue.textContent=size.value+'px';sizeWrap.append(sizeLabel,size,sizeValue);
-  box.append(ta,row,sizeWrap);el.appendChild(box);
-  const applyComment=()=>{const value=ta.value;mutate(st=>{const local=st.items?.[id];if(local)local.comment=value});let cm=el.querySelector(':scope > .placed-comment');if(value.trim()){if(!cm){cm=document.createElement('div');el.appendChild(cm)}const state=appState(),disp=state.display||{},local=state.items[id]||{},p=local.commentPosition||disp.commentPosition||'top';cm.className='placed-comment comment-'+p+' '+((disp.commentBox||'on')==='on'?'with-box':'no-box');cm.textContent=value;cm.style.fontSize=(disp.commentFontSize||10)+'px';applyTextOutline(cm)}else cm?.remove()};
-  ta.addEventListener('input',applyComment);
-  posSelect.addEventListener('change',()=>{mutate(st=>{const local=st.items?.[id];if(local)local.commentPosition=posSelect.value});box.className='inline-comment-editor pos-'+posSelect.value;const cm=el.querySelector(':scope > .placed-comment');if(cm){const disp=appState().display||{};cm.className='placed-comment comment-'+posSelect.value+' '+((disp.commentBox||'on')==='on'?'with-box':'no-box')}});
-  size.addEventListener('input',()=>{sizeValue.textContent=size.value+'px';el.style.setProperty('--item-icon-size',size.value+'px');mutate(st=>{const local=st.items?.[id];if(local)local.iconSize=Number(size.value)})});
-  close.onclick=e=>{e.preventDefault();e.stopPropagation();applyComment();box.remove();renderPlaced()};
-  box.addEventListener('pointerdown',e=>e.stopPropagation());box.addEventListener('dblclick',e=>e.stopPropagation());
-  requestAnimationFrame(()=>{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)});
+
+  const s=appState(),d=s.display||{},l=s.items?.[id];
+  if(!l||!el)return;
+
+  let draftComment=l.comment||'';
+  let draftPosition=l.commentPosition||d.commentPosition||'top';
+  let draftSize=Number(l.iconSize)||Number(d.iconSize)||72;
+
+  const box=document.createElement('div');
+  box.className='inline-comment-editor pos-'+draftPosition;
+
+  const ta=document.createElement('textarea');
+  ta.value=draftComment;
+  ta.placeholder='コメント';
+
+  const row=document.createElement('div');
+  row.className='inline-comment-row';
+
+  const posSelect=document.createElement('select');
+  posSelect.innerHTML=`
+    <option value="top">上</option>
+    <option value="bottom">下</option>
+    <option value="left">左</option>
+    <option value="right">右</option>`;
+  posSelect.value=draftPosition;
+
+  const close=document.createElement('button');
+  close.type='button';
+  close.className='inline-comment-close';
+  close.textContent='✓';
+
+  row.append(posSelect,close);
+
+  const sizeWrap=document.createElement('div');
+  sizeWrap.className='inline-size-row';
+  const sizeLabel=document.createElement('span');
+  sizeLabel.textContent='アイコン';
+  const size=document.createElement('input');
+  size.type='range';
+  size.min='32';size.max='180';size.step='1';
+  size.value=draftSize;
+  const sizeValue=document.createElement('span');
+  sizeValue.textContent=draftSize+'px';
+  sizeWrap.append(sizeLabel,size,sizeValue);
+
+  box.append(ta,row,sizeWrap);
+  el.appendChild(box);
+
+  const updateCommentPreview=()=>{
+    let cm=el.querySelector(':scope > .placed-comment');
+    if(draftComment.trim()){
+      if(!cm){
+        cm=document.createElement('div');
+        el.appendChild(cm);
+      }
+      const disp=appState().display||{};
+      cm.className='placed-comment comment-'+draftPosition+' '+((disp.commentBox||'on')==='on'?'with-box':'no-box');
+      cm.textContent=draftComment;
+      cm.style.fontSize=(disp.commentFontSize||10)+'px';
+      applyTextOutline(cm);
+    }else{
+      cm?.remove();
+    }
+  };
+
+  ta.addEventListener('input',()=>{
+    draftComment=ta.value;
+    updateCommentPreview();
+  });
+
+  posSelect.addEventListener('change',()=>{
+    draftPosition=posSelect.value;
+    box.className='inline-comment-editor pos-'+draftPosition;
+    updateCommentPreview();
+  });
+
+  size.addEventListener('input',()=>{
+    draftSize=Number(size.value)||72;
+    sizeValue.textContent=draftSize+'px';
+    el.style.setProperty('--item-icon-size',draftSize+'px');
+  });
+
+  close.onclick=e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    mutate(st=>{
+      const local=st.items?.[id];
+      if(!local)return;
+      local.comment=draftComment;
+      local.commentPosition=draftPosition;
+      local.iconSize=draftSize;
+    });
+    const it=items.find(x=>x.id===id);
+    if(it)it.local=appState().items[id];
+    box.remove();
+    renderPlaced();
+  };
+
+  box.addEventListener('pointerdown',e=>e.stopPropagation());
+  box.addEventListener('dblclick',e=>e.stopPropagation());
+
+  requestAnimationFrame(()=>{
+    ta.focus();
+    ta.setSelectionRange(ta.value.length,ta.value.length);
+  });
 }
 
 function setupPlacedClickBehavior(el,id){
@@ -2693,6 +2945,9 @@ function renderPlaced(){
     }
 
     const im=document.createElement('img');
+    im.draggable=false;
+    im.loading='lazy';
+    im.decoding='async';
     im.src=displayImage(it)||'';
     im.onerror=()=>im.style.display='none';
     if(currentIconShape()!=='original')cropStyle(im,l.crop);
@@ -2725,49 +2980,108 @@ function renderPlaced(){
 }
 function startPlacedDrag(e,id,el){
   if(e.button!=null&&e.button!==0)return;
-  if(e.target.closest('textarea,input,select,button'))return;
+  if(e.target.closest('.inline-comment-editor,textarea,input,select,button'))return;
 
-  const r=$('#canvas').getBoundingClientRect();
-  const sx=e.clientX,sy=e.clientY;
-  let x=parseFloat(el.style.left)||50,y=parseFloat(el.style.top)||50;
-  let moved=false,raf=0,lastX=e.clientX,lastY=e.clientY;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const canvas=$('#canvas');
+  const r=canvas.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+
+  const s=appState();
+  const local=s.items?.[id];
+  if(!local)return;
+
+  const startX=e.clientX;
+  const startY=e.clientY;
+  const startPctX=Number(local.x??50);
+  const startPctY=Number(local.y??50);
+
+  let moved=false;
+  let lastX=startX;
+  let lastY=startY;
+  let raf=0;
 
   el._draggedByPointer=false;
+  el.classList.add('dragging');
+
+  try{el.setPointerCapture?.(e.pointerId)}catch{}
 
   const paint=()=>{
     raf=0;
-    x=Math.max(2,Math.min(98,(lastX-r.left)/r.width*100));
-    y=Math.max(2,Math.min(98,(lastY-r.top)/r.height*100));
-    el.style.left=x+'%';el.style.top=y+'%';
+    const dx=(lastX-startX)/r.width*100;
+    const dy=(lastY-startY)/r.height*100;
+    const x=Math.max(2,Math.min(98,startPctX+dx));
+    const y=Math.max(2,Math.min(98,startPctY+dy));
+    el.style.left=x+'%';
+    el.style.top=y+'%';
   };
-  const mv=ev=>{
-    lastX=ev.clientX;lastY=ev.clientY;
-    if(!moved&&Math.hypot(lastX-sx,lastY-sy)>5){moved=true;el._draggedByPointer=true}
+
+  const move=ev=>{
+    lastX=ev.clientX;
+    lastY=ev.clientY;
+    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>3){
+      moved=true;
+      el._draggedByPointer=true;
+    }
     if(moved&&!raf)raf=requestAnimationFrame(paint);
   };
-  const up=()=>{
-    window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+
+  const finish=ev=>{
     if(raf){cancelAnimationFrame(raf);paint()}
+    el.removeEventListener('pointermove',move);
+    el.removeEventListener('pointerup',finish);
+    el.removeEventListener('pointercancel',finish);
+    el.classList.remove('dragging');
+    try{el.releasePointerCapture?.(e.pointerId)}catch{}
+
     if(moved){
-      mutate(s=>{const l=s.items[id];if(l){l.x=x;l.y=y}});
-      const it=items.find(z=>z.id===id);if(it)it.local=appState().items[id];
-      setTimeout(()=>{el._draggedByPointer=false},80);
+      const x=parseFloat(el.style.left)||startPctX;
+      const y=parseFloat(el.style.top)||startPctY;
+      mutate(state=>{
+        const l=state.items?.[id];
+        if(l){l.x=x;l.y=y}
+      });
+      const it=items.find(z=>z.id===id);
+      if(it)it.local=appState().items[id];
+      setTimeout(()=>{el._draggedByPointer=false},120);
     }
   };
-  window.addEventListener('pointermove',mv);
-  window.addEventListener('pointerup',up,{once:true});
-  window.addEventListener('pointercancel',up,{once:true});
+
+  el.addEventListener('pointermove',move);
+  el.addEventListener('pointerup',finish,{once:true});
+  el.addEventListener('pointercancel',finish,{once:true});
 }
 
 
-function updateSelectedCommentRealtime(){}
+function updateSelectedCommentRealtime(){
+  if(!selectedId)return;
+  const value=$('#commentInput')?.value ?? '';
+  mutate(s=>{
+    if(!s.items[selectedId])return;
+    s.items[selectedId].comment=value;
+  });
+  const it=items.find(x=>x.id===selectedId);
+  if(it&&appState().items[selectedId])it.local=appState().items[selectedId];
+  renderPlaced();
+}
 
-function resetIconEditor(){selectedId=null}
+function resetIconEditor(){
+  selectedId=null;
+  $('#iconEditModal')?.classList.remove('open');
+}
 function openDrawer(id){openInlineCommentEditor(id,document.querySelector(`.placed[data-id="${CSS.escape(id)}"]`))}
 function saveItem(){}
 
 /* crop/editor */
-function updateCrop(){}
+function updateCrop(){
+  if(!cropWork)return;
+  const img=$('#cropImg');
+  if(!img)return;
+  img.style.transform=`translate(-50%,-50%) translate(${Number(cropWork.x||0)}%,${Number(cropWork.y||0)}%) scale(${Number(cropWork.zoom||1)})`;
+  $('#cropZoom').value=Number(cropWork.zoom||1);
+}
 function setupCrop(){/* crop editing moved to left list */}
 
 
@@ -2877,7 +3191,9 @@ async function exportFinalImage(){
 }
 
 
-function setupDisplayPanelDrag(){/* fixed panel: intentionally not draggable */}
+function setupDisplayPanelDrag(){
+  /* v51: settings are fixed on the right; dragging is disabled */
+}
 
 /* left/right resizable panes */
 function applyPaneWidth(px){
@@ -2965,9 +3281,12 @@ function restoreDisplayPanelState(){
   panel.classList.toggle('floating-closed',closed);
 }
 function toggleDisplayPanel(force){
-  const panel=$('#settings');if(!panel)return;
+  const panel=$('#settings');
+  if(!panel)return;
+
   const isOpen=!panel.classList.contains('floating-closed');
   const next=typeof force==='boolean'?force:!isOpen;
+
   panel.classList.toggle('floating-closed',!next);
   localStorage.setItem('magiaMatrix.displayPanel.closed',next?'0':'1');
 }
@@ -2980,17 +3299,49 @@ function restoreDisplay(){
   $('#fontFamily').value=d.fontFamily||"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 }
 function bindDisplay(){
-  const update=()=>{
-    mutate(s=>s.display={
-      iconSize:+$('#iconSize').value,showName:$('#showName').checked,showComment:$('#showComment').checked,
-      globalTextColor:$('#globalTextColor').value,useIndividualTextColor:$('#useIndividualTextColor').checked,iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,iconShape:$('#iconShape').value,commentFontSize:Number($('#commentFontSize').value),commentPosition:$('#commentPosition').value,commentBox:$('#commentBox').value,textOutline:$('#textOutline').value,fontFamily:$('#fontFamily').value
-    });
-    $('#iconSizeValue').textContent=$('#iconSize').value;renderPlaced();
+  let saveTimer=0;
+
+  const readDisplay=()=>({
+    iconSize:+$('#iconSize').value,
+    showName:$('#showName').checked,
+    showComment:$('#showComment').checked,
+    globalTextColor:$('#globalTextColor').value,
+    useIndividualTextColor:$('#useIndividualTextColor').checked,
+    iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
+    iconShape:$('#iconShape').value,
+    commentFontSize:Number($('#commentFontSize').value),
+    commentPosition:$('#commentPosition').value,
+    commentBox:$('#commentBox').value,
+    textOutline:$('#textOutline').value,
+    fontFamily:$('#fontFamily').value
+  });
+
+  const persist=()=>{
+    const s=appState();
+    s.display=readDisplay();
+    saveState(s);
   };
-  ['iconSize','iconShape','commentFontSize','commentPosition','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily'].forEach(id=>$('#'+id).addEventListener('input',update));
+
+  const update=()=>{
+    const s=appState();
+    s.display=readDisplay();
+
+    $('#iconSizeValue').textContent=$('#iconSize').value;
+    $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
+
+    renderPlaced();
+
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(persist,120);
+  };
+
+  ['iconSize','iconShape','commentFontSize','commentPosition','commentBox','textOutline','showName','showComment','globalTextColor','useIndividualTextColor','iconBorderUseTextColor','fontFamily']
+    .forEach(id=>$('#'+id).addEventListener('input',update));
 }
 
+
 $('#loadBtn').onclick=loadNotion;
+
 $('#apiHelpBtn').onclick=e=>{
   e.preventDefault();
   e.stopPropagation();
@@ -3027,43 +3378,44 @@ $('#confirmSaveApiBtn').onclick=e=>{
 };
 
 $('#helpClose').onclick=()=>$('#helpModal').classList.remove('open');
-
-
-
-
-
-
 $('#clearTokenBtn').onclick=clearToken;
 $('#clearLoadedCacheBtn').onclick=clearLoadedCache;
+
 $('#showIconsTab').onclick=()=>showLibraryPage('icons');
 $('#showTemplatesTab').onclick=()=>showLibraryPage('templates');
+
+$('#settingsMenuBtn').onclick=e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  toggleDisplayPanel();
+};
+$('#displaySettingsToggle').onclick=e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  toggleDisplayPanel(false);
+};
 
 $('#exportImageBtn').onclick=exportFinalImage;
 $('#newTemplateBtn').onclick=createNewTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
+
 window.addEventListener('beforeunload',()=>saveCurrentTemplateState());
 
-
-
-restoreSettings();restoreDisplay();restorePaneWidth();bindDisplay();setupSplitter();setupHeaderToggle();syncImageFieldWithFavicon();setupTemplateDrop();setupCrop();setupLeftCrop();
+restoreSettings();
+restoreDisplay();
+restorePaneWidth();
+bindDisplay();
+setupSplitter();
+setupHeaderToggle();
+syncImageFieldWithFavicon();
+setupTemplateDrop();
+setupCrop();
+setupLeftCrop();
 restoreDisplayPanelState();
 restoreLibraryPage();
-syncImageFieldWithFavicon();
 
 restoreLoadedCache();
-
-$('#commentFontSize').addEventListener('input',()=>{
-  $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
-});
-
 restoreTemplate();
-
-
-
-setupDisplayPanelDrag();
-
-$('#settingsMenuBtn').onclick=e=>{e.preventDefault();e.stopPropagation();toggleDisplayPanel()};
-$('#displaySettingsToggle').onclick=e=>{e.preventDefault();e.stopPropagation();toggleDisplayPanel(false)};
 
 </script>
 </body>
