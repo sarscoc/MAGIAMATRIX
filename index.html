@@ -1964,6 +1964,49 @@ button{cursor:pointer}
   background:transparent!important;
 }
 
+
+/* v65: visible drag preview — clone the already-rendered left icon */
+.drag-ghost{
+  position:fixed!important;
+  z-index:99999!important;
+  width:64px!important;
+  height:64px!important;
+  left:0;
+  top:0;
+  margin:0!important;
+  padding:0!important;
+  display:block!important;
+  visibility:visible!important;
+  opacity:.96!important;
+  pointer-events:none!important;
+  transform:translate(-50%,-50%)!important;
+  box-sizing:border-box!important;
+  background:#eee;
+  box-shadow:0 8px 24px rgba(0,0,0,.28)!important;
+  will-change:left,top;
+}
+.drag-ghost > img{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:none!important;
+}
+.drag-ghost.mode-circle{
+  border-radius:50%!important;
+  overflow:hidden!important;
+}
+.drag-ghost.mode-square{
+  border-radius:18%!important;
+  overflow:hidden!important;
+}
+.drag-ghost.mode-original{
+  border:0!important;
+  outline:0!important;
+  border-radius:0!important;
+  overflow:visible!important;
+  background:transparent!important;
+}
+
 </style>
 </head>
 <body>
@@ -3037,45 +3080,96 @@ function renderLibrary(){
 function startLibraryDrag(e,it,card){
   if(e.button!=null&&e.button!==0)return;
   e.preventDefault();
-  const startX=e.clientX,startY=e.clientY;
-  let moved=false,raf=0,lastX=startX,lastY=startY;
 
-  const ghost=document.createElement('div');
-  ghost.className='drag-ghost';
-  applyShapeClass(ghost);
-  const gi=document.createElement('img');
-  gi.draggable=false;
-  gi.src=displayImage(it)||'';
-  const ghostLocal=appState().items?.[it.id]||{};
-  bindIconImage(gi,ghostLocal.crop,currentIconShape());
-  ghost.appendChild(gi);
-  ghost.style.left='0';
-  ghost.style.top='0';
-  ghost.style.transform=`translate3d(${startX-32}px,${startY-32}px,0)`;
+  const startX=e.clientX;
+  const startY=e.clientY;
+  let moved=false;
+  let raf=0;
+  let lastX=startX;
+  let lastY=startY;
+
+  /*
+    Use the avatar that is already visible in the left menu.
+    This avoids loading a second image during drag and guarantees
+    the preview matches the current crop/shape exactly.
+  */
+  const sourceAvatar=card.querySelector('.source-avatar');
+  const ghost=sourceAvatar
+    ? sourceAvatar.cloneNode(true)
+    : document.createElement('div');
+
+  ghost.classList.remove('source-avatar');
+  ghost.classList.add('drag-ghost');
+
+  if(!sourceAvatar){
+    applyShapeClass(ghost);
+    const gi=document.createElement('img');
+    gi.draggable=false;
+    gi.src=displayImage(it)||'';
+    const local=appState().items?.[it.id]||{};
+    bindIconImage(gi,local.crop,currentIconShape());
+    ghost.appendChild(gi);
+  }else{
+    const gi=ghost.querySelector('img');
+    if(gi){
+      gi.draggable=false;
+      gi.loading='eager';
+      gi.decoding='sync';
+    }
+  }
+
+  ghost.style.left=startX+'px';
+  ghost.style.top=startY+'px';
   document.body.appendChild(ghost);
 
   const paint=()=>{
     raf=0;
-    ghost.style.transform=`translate3d(${lastX-32}px,${lastY-32}px,0)`;
+    ghost.style.left=lastX+'px';
+    ghost.style.top=lastY+'px';
   };
+
   const move=ev=>{
-    lastX=ev.clientX;lastY=ev.clientY;
-    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>5)moved=true;
-    if(!raf)raf=requestAnimationFrame(paint);
+    lastX=ev.clientX;
+    lastY=ev.clientY;
+
+    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>5){
+      moved=true;
+    }
+
+    if(!raf){
+      raf=requestAnimationFrame(paint);
+    }
   };
+
   const up=ev=>{
-    if(raf)cancelAnimationFrame(raf);
+    if(raf){
+      cancelAnimationFrame(raf);
+      paint();
+    }
+
     ghost.remove();
     window.removeEventListener('pointermove',move);
     window.removeEventListener('pointerup',up);
     window.removeEventListener('pointercancel',up);
 
-    if(!moved){openLeftCropEditor(it.id);return}
+    if(!moved){
+      openLeftCropEditor(it.id);
+      return;
+    }
+
     const c=$('#canvas').getBoundingClientRect();
-    if(ev.clientX>=c.left&&ev.clientX<=c.right&&ev.clientY>=c.top&&ev.clientY<=c.bottom){
-      placeItem(it.id,(ev.clientX-c.left)/c.width*100,(ev.clientY-c.top)/c.height*100);
+    if(
+      ev.clientX>=c.left&&ev.clientX<=c.right&&
+      ev.clientY>=c.top&&ev.clientY<=c.bottom
+    ){
+      placeItem(
+        it.id,
+        (ev.clientX-c.left)/c.width*100,
+        (ev.clientY-c.top)/c.height*100
+      );
     }
   };
+
   window.addEventListener('pointermove',move,{passive:true});
   window.addEventListener('pointerup',up,{once:true});
   window.addEventListener('pointercancel',up,{once:true});
