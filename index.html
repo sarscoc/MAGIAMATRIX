@@ -2198,11 +2198,10 @@ button{cursor:pointer}
 }
 
 
-/* v96: make comment direction buttons larger and easier to tap */
+/* v99: compact direction controls — textarea → 2px gap → 34px arrow → 2px → outer frame */
 .inline-comment-editor{
   overflow:visible!important;
-  /* 34px arrow + 3px gap from the textarea (buttons sit 4px inside the frame) */
-  padding:41px!important;
+  padding:38px!important;
 }
 
 .inline-comment-editor textarea{
@@ -2254,21 +2253,21 @@ button{cursor:pointer}
 /* top / bottom / left / right — all stay inside the outer frame */
 .comment-direction-btn.dir-top{
   left:50%!important;
-  top:4px!important;
+  top:2px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-bottom{
   left:50%!important;
-  bottom:4px!important;
+  bottom:2px!important;
   transform:translateX(-50%)!important;
 }
 .comment-direction-btn.dir-left{
-  left:4px!important;
+  left:2px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
 .comment-direction-btn.dir-right{
-  right:4px!important;
+  right:2px!important;
   top:50%!important;
   transform:translateY(-50%)!important;
 }
