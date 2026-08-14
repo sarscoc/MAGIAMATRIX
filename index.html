@@ -2354,7 +2354,7 @@ button{cursor:pointer}
 
       <div class="field db">
         <label>データベースURL / ID</label>
-        <input id="notionSource" placeholder="Notion URL または ID">
+        <input id="notionSource" placeholder="データベースURL または ID">
       </div>
 
       <div class="field prop">
@@ -2587,7 +2587,10 @@ button{cursor:pointer}
       <button class="iconbtn" id="helpClose" type="button">×</button>
     </div>
 
-    <p class="help">このツールは Notion API を使ってデータを読み込みます。Notion APIキーとデータベースURL / IDを入力し、「読込 / 更新」を押してください。</p>
+    <p class="help">このツールは Notion API を使ってデータを読み込みます。Notion APIキーと、対象の<strong>データベースURL / ID</strong>を入力し、「読込 / 更新」を押してください。</p>
+
+    <h3>データベースURL / ID</h3>
+    <p class="help">読み込みたいNotionデータベースのURLを入力します。<strong>公開用の共有URLでも利用できます。</strong> URLの代わりにデータベースIDを入力することもできます。</p>
 
     <h3>読み込み項目について</h3>
     <p class="help"><strong>名前（該当プロパティ）</strong><br>キャラクター名など、一覧に表示したい名前が入っているNotionのプロパティ名を指定します。通常は <code>名前</code> などを指定します。</p>
