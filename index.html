@@ -2032,17 +2032,17 @@ button{cursor:pointer}
 }
 
 /* Browser text outline.
-   paint-order keeps the white stroke outside/around the colored fill. */
+   JS builds a rounded multi-shadow ring so the outline looks smooth, not jagged. */
 .text-outline{
-  text-shadow:none!important;
-  paint-order:stroke fill!important;
-  -webkit-text-stroke:var(--outline-width,0px) var(--outline-color,rgba(255,255,255,.98))!important;
+  paint-order:fill!important;
+  -webkit-text-stroke:0 transparent!important;
+  filter:none!important;
 }
 
 .placed-comment.text-outline,
 .placed-name.text-outline{
   -webkit-font-smoothing:antialiased;
-  text-rendering:geometricPrecision;
+  text-rendering:optimizeLegibility;
 }
 
 
@@ -3483,6 +3483,31 @@ function getNameFontFamily(d=appState().display||{}){
 function getCommentFontFamily(d=appState().display||{}){
   return d?.commentFontFamily||d?.fontFamily||DEFAULT_FONT_FAMILY;
 }
+function makeRoundedTextShadow(width,color){
+  width=Math.max(0,Number(width)||0);
+  if(width<=0.01)return 'none';
+  const outerRadius=width;
+  const innerRadius=Math.max(0.45, width*0.58);
+  const outerSteps=Math.max(18, Math.ceil(width*18));
+  const innerSteps=Math.max(12, Math.ceil(width*12));
+  const parts=[];
+  for(let i=0;i<outerSteps;i++){
+    const a=(Math.PI*2*i)/outerSteps;
+    const x=Math.cos(a)*outerRadius;
+    const y=Math.sin(a)*outerRadius;
+    parts.push(`${x.toFixed(2)}px ${y.toFixed(2)}px 0 ${color}`);
+  }
+  for(let i=0;i<innerSteps;i++){
+    const a=(Math.PI*2*i)/innerSteps;
+    const x=Math.cos(a)*innerRadius;
+    const y=Math.sin(a)*innerRadius;
+    parts.push(`${x.toFixed(2)}px ${y.toFixed(2)}px 0 ${color}`);
+  }
+  const blur=Math.max(0.4, width*0.22);
+  parts.push(`0 0 ${blur.toFixed(2)}px ${color}`);
+  return parts.join(', ');
+}
+
 function applyTextOutline(el,kind='name'){
   if(!el)return;
   const d=appState().display||{};
@@ -3493,9 +3518,11 @@ function applyTextOutline(el,kind='name'){
   if(on){
     el.style.setProperty('--outline-width',width+'px');
     el.style.setProperty('--outline-color',color);
+    el.style.setProperty('text-shadow',makeRoundedTextShadow(width,color),'important');
   }else{
     el.style.removeProperty('--outline-width');
     el.style.removeProperty('--outline-color');
+    el.style.removeProperty('text-shadow');
   }
 }
 
