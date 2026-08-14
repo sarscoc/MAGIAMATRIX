@@ -2201,7 +2201,8 @@ button{cursor:pointer}
 /* v96: make comment direction buttons larger and easier to tap */
 .inline-comment-editor{
   overflow:visible!important;
-  padding:20px 30px!important;
+  /* 34px arrow + 3px gap from the textarea (buttons sit 4px inside the frame) */
+  padding:41px!important;
 }
 
 .inline-comment-editor textarea{
@@ -2240,7 +2241,7 @@ button{cursor:pointer}
 
 .comment-direction-btn:hover{
   background:transparent!important;
-  color:#39464e!important;
+  color:#667078!important;
   opacity:1!important;
   transform:none!important;
   box-shadow:none!important;
