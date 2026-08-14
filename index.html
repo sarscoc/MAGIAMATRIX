@@ -1795,6 +1795,24 @@ button{cursor:pointer}
   border-radius:18%!important;
 }
 
+
+/* v60: icon/comment sections */
+.settings-section{
+  padding:2px 0 4px;
+}
+.settings-section-title{
+  margin:2px 0 8px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.08em;
+  color:#4f5d66;
+}
+.settings-section-divider{
+  height:1px;
+  margin:10px 0 12px;
+  background:#d9e0e4;
+}
+
 </style>
 </head>
 <body>
@@ -1944,66 +1962,80 @@ button{cursor:pointer}
           </div>
           <div class="display-settings-body" id="displaySettingsBody">
 
-<div class="group">
-            <label>アイコン表示</label>
-            <select id="iconShape">
-              <option value="original">そのまま表示</option>
-              <option value="circle">丸に切り抜き</option>
-              <option value="square">四角に切り抜き</option>
-            </select>
+          <div class="settings-section">
+            <div class="settings-section-title">アイコン</div>
+
+            <div class="group">
+              <label>アイコン表示</label>
+              <select id="iconShape">
+                <option value="original">そのまま表示</option>
+                <option value="circle">丸に切り抜き</option>
+                <option value="square">四角に切り抜き</option>
+              </select>
+            </div>
+
+            <div class="group wide">
+              <label>アイコンの大きさ</label>
+              <input id="iconSize" type="range" min="36" max="140" step="2" value="72">
+              <div class="value"><span id="iconSizeValue">72</span> px</div>
+            </div>
+
+            <div class="group">
+              <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
+            </div>
+
+            <div class="group wide">
+              <label>文字色（名前・コメント共通）</label>
+              <input id="globalTextColor" type="color" value="#202327">
+              <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> 個別文字色を使う</label>
+              <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
+            </div>
           </div>
 
-          <div class="group wide">
-            <label>アイコンの大きさ</label>
-            <input id="iconSize" type="range" min="36" max="140" step="2" value="72">
-            <div class="value"><span id="iconSizeValue">72</span> px</div>
+          <div class="settings-section-divider"></div>
+
+          <div class="settings-section">
+            <div class="settings-section-title">コメント</div>
+
+            <div class="group">
+              <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
+            </div>
+
+            <div class="group wide">
+              <label>コメント文字サイズ <span id="commentFontSizeValue">10</span>px</label>
+              <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
+            </div>
+
+            <div class="group">
+              <label>コメント枠</label>
+              <select id="commentBox">
+                <option value="on">あり</option>
+                <option value="off">なし</option>
+              </select>
+            </div>
+
+            <div class="group">
+              <label>白縁取り</label>
+              <select id="textOutline">
+                <option value="off">なし</option>
+                <option value="on">あり</option>
+              </select>
+            </div>
+
+            <div class="group">
+              <label>フォント</label>
+              <select id="fontFamily">
+                <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
+                <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
+                <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
+                <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
+                <option value="'Hiragino Mincho ProN',serif">ヒラギノ明朝</option>
+                <option value="Georgia,'Times New Roman',serif">Serif</option>
+                <option value="'Courier New',monospace">Monospace</option>
+              </select>
+            </div>
           </div>
 
-          <div class="group">
-            <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
-            <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
-          </div>
-
-          <div class="group wide">
-            <label>文字色</label>
-            <input id="globalTextColor" type="color" value="#202327">
-            <label class="check"><input id="useIndividualTextColor" type="checkbox" checked> 個別文字色を使う</label>
-            <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
-          </div>
-          <div class="group wide">
-            <label>コメント文字サイズ <span id="commentFontSizeValue">10</span>px</label>
-            <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
-          </div>
-          <div class="group">
-<label>コメント枠</label>
-          <select id="commentBox">
-            <option value="on">あり</option>
-            <option value="off">なし</option>
-          </select>
-          </div>
-          <div class="group">
-            <label>白縁取り</label>
-            <select id="textOutline">
-              <option value="off">なし</option>
-              <option value="on">あり</option>
-            </select>
-          </div>
-
-          <div class="group">
-            <label>フォント</label>
-            <select id="fontFamily">
-              <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
-              <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
-              <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
-              <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
-              <option value="'Hiragino Mincho ProN',serif">ヒラギノ明朝</option>
-              <option value="Georgia,'Times New Roman',serif">Serif</option>
-              <option value="'Courier New',monospace">Monospace</option>
-            </select>
-          </div>
-
-
-          
           </div>
           </div>
 
