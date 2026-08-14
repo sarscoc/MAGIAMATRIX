@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="「このタブ」を選択すると、Chromeの高精細フレームからテンプレ部分を1:1保存">画像を保存</button>
+          <button class="btn" id="exportImageBtn" type="button" title="テンプレだけの高画質スクショ用タブを開く">高画質スクショ</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -2750,7 +2750,7 @@ function restoreLoadedCache(){
 
   if($('#connectionStatus')){
     const d=new Date(c.savedAt);
-    $('#connectionStatus').textContent=`前回データ ${items.length}件`;
+    $('#connectionStatus').textContent='';
     $('#connectionStatus').title=`保存日時: ${d.toLocaleString()}`;
   }
   updateLastDataStatus(items.length);
@@ -4319,61 +4319,138 @@ async function captureCurrentTabElement(target,template){
 }
 
 /* v84: native high-detail single-frame screenshot; 1:1 pixel crop */
+/* v85: clean screenshot-only view; no video capture */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
-  const button=$('#exportImageBtn');
 
   if(!target?.classList.contains('has-template')||!template?.src){
     alert('先にテンプレ画像を入れてください。');
     return;
   }
 
-  const oldText=button?.textContent||'画像を保存';
+  if(typeof commitActiveCommentEditor==='function'){
+    commitActiveCommentEditor();
+  }
 
-  if(button){
-    button.disabled=true;
-    button.textContent='このタブを選択…';
+  await waitForVisibleImages(target);
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+  const shotWin=window.open('about:blank','_blank');
+
+  if(!shotWin){
+    alert('撮影用タブを開けませんでした。ポップアップを許可してから、もう一度お試しください。');
+    return;
   }
 
   try{
-    /*
-      Save/close only the editing controls first.
-      The actual comment remains visible at its saved position.
-    */
-    if(typeof commitActiveCommentEditor==='function'){
-      commitActiveCommentEditor();
+    const targetRect=target.getBoundingClientRect();
+    const visible=getTemplateVisibleRect(target,template);
+
+    if(!targetRect.width||!targetRect.height||!visible.width||!visible.height){
+      throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    await waitForVisibleImages(target);
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const naturalWidth=Math.max(1,Number(template.naturalWidth||Math.round(visible.width)));
+    const naturalHeight=Math.max(1,Number(template.naturalHeight||Math.round(visible.height)));
+    const scale=naturalWidth/visible.width;
 
-    const shot=await captureCurrentTabElement(target,template);
-    const blob=await canvasToBlob(shot,'image/png');
-    const url=URL.createObjectURL(blob);
+    const clone=target.cloneNode(true);
 
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='MAGIA-MATRIX.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    clone.querySelectorAll(
+      '.template-drop,.canvas-guide,.inline-comment-editor,.comment-direction-layer'
+    ).forEach(el=>el.remove());
 
-    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    clone.querySelectorAll('img').forEach(img=>{
+      img.loading='eager';
+      img.decoding='sync';
+      img.draggable=false;
+    });
+
+    clone.removeAttribute('id');
+    clone.style.setProperty('position','absolute','important');
+    clone.style.setProperty('left',(-visible.left*scale)+'px','important');
+    clone.style.setProperty('top',(-visible.top*scale)+'px','important');
+    clone.style.setProperty('width',targetRect.width+'px','important');
+    clone.style.setProperty('height',targetRect.height+'px','important');
+    clone.style.setProperty('min-width','0','important');
+    clone.style.setProperty('min-height','0','important');
+    clone.style.setProperty('margin','0','important');
+    clone.style.setProperty('padding','0','important');
+    clone.style.setProperty('border','0','important');
+    clone.style.setProperty('border-radius','0','important');
+    clone.style.setProperty('box-shadow','none','important');
+    clone.style.setProperty('transform-origin','0 0','important');
+    clone.style.setProperty('transform','scale('+scale+')','important');
+    clone.style.setProperty('overflow','visible','important');
+
+    const styleText=[...document.querySelectorAll('style')]
+      .map(el=>el.textContent||'')
+      .join('\n');
+
+    const doc=shotWin.document;
+    doc.open();
+    doc.write(`<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>MAGIA MATRIX — 高画質スクショ用</title>
+<style>
+${styleText}
+html,body{
+  margin:0!important;
+  padding:0!important;
+  width:${naturalWidth}px!important;
+  height:${naturalHeight}px!important;
+  min-width:${naturalWidth}px!important;
+  min-height:${naturalHeight}px!important;
+  overflow:hidden!important;
+  background:transparent!important;
+}
+#magiaCaptureRoot{
+  position:relative!important;
+  display:block!important;
+  width:${naturalWidth}px!important;
+  height:${naturalHeight}px!important;
+  min-width:${naturalWidth}px!important;
+  min-height:${naturalHeight}px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  background:transparent!important;
+}
+</style>
+</head>
+<body><div id="magiaCaptureRoot"></div></body>
+</html>`);
+    doc.close();
+
+    const imported=doc.importNode(clone,true);
+    doc.getElementById('magiaCaptureRoot').appendChild(imported);
+
+    const captureCanvas=doc.querySelector('#magiaCaptureRoot > .canvas');
+    if(captureCanvas){
+      captureCanvas.style.setProperty('background','transparent','important');
+      captureCanvas.style.setProperty('border','0','important');
+      captureCanvas.style.setProperty('outline','0','important');
+      captureCanvas.style.setProperty('border-radius','0','important');
+      captureCanvas.style.setProperty('box-shadow','none','important');
+    }
+
+    if($('#connectionStatus')){
+      $('#connectionStatus').textContent='高画質スクショ用タブを開きました';
+      $('#connectionStatus').title='新しいタブをChromeのスクリーンショット機能で撮影してください';
+    }
+
+    shotWin.focus();
 
   }catch(err){
-    console.error('native screenshot export failed:',err);
-
-    if(err?.name==='NotAllowedError'){
-      alert('画像保存をキャンセルしました。保存するときは共有画面で「このタブ」を選んでください。');
-    }else{
-      alert(err?.message||'画像保存に失敗しました。');
-    }
-  }finally{
-    if(button){
-      button.disabled=false;
-      button.textContent=oldText;
-    }
+    console.error('capture view failed:',err);
+    try{shotWin.close()}catch{}
+    alert(err?.message||'撮影用画面を作成できませんでした。');
   }
 }
 
