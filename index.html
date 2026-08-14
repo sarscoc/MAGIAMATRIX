@@ -2427,7 +2427,7 @@ button{cursor:pointer}
       <div class="stage-area-toolbar">
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
-          <button class="btn" id="exportImageBtn" type="button" title="テンプレだけの高画質スクショ用タブを開く">高画質スクショ</button>
+          <button class="btn" id="exportImageBtn" type="button" title="テンプレだけの撮影用画面を自動生成してPNG保存">画像保存（SS）</button>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -4319,31 +4319,66 @@ async function captureCurrentTabElement(target,template){
 }
 
 /* v84: native high-detail single-frame screenshot; 1:1 pixel crop */
-/* v85: clean screenshot-only view; no video capture */
+
+function waitCaptureDocumentImages(root,timeout=15000){
+  const imgs=[...root.querySelectorAll('img')];
+  if(!imgs.length)return Promise.resolve();
+
+  return Promise.all(imgs.map(img=>{
+    if(img.complete&&img.naturalWidth)return Promise.resolve();
+
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=()=>{
+        if(done)return;
+        done=true;
+        resolve();
+      };
+      img.addEventListener('load',finish,{once:true});
+      img.addEventListener('error',finish,{once:true});
+      setTimeout(finish,timeout);
+    });
+  }));
+}
+
+function blobDownload(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+/* v87: exact-size clean render -> automatic PNG download */
 async function exportFinalImage(){
   const target=$('#canvas');
   const template=$('#templateImg');
+  const button=$('#exportImageBtn');
 
   if(!target?.classList.contains('has-template')||!template?.src){
     alert('先にテンプレ画像を入れてください。');
     return;
   }
 
-  if(typeof commitActiveCommentEditor==='function'){
-    commitActiveCommentEditor();
+  const oldText=button?.textContent||'画像保存（SS）';
+  if(button){
+    button.disabled=true;
+    button.textContent='保存中…';
   }
 
-  await waitForVisibleImages(target);
-  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-
-  const shotWin=window.open('about:blank','_blank');
-
-  if(!shotWin){
-    alert('撮影用タブを開けませんでした。ポップアップを許可してから、もう一度お試しください。');
-    return;
-  }
+  let shotWin=null;
 
   try{
+    if(typeof commitActiveCommentEditor==='function'){
+      commitActiveCommentEditor();
+    }
+
+    await waitForVisibleImages(target);
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
     const targetRect=target.getBoundingClientRect();
     const visible=getTemplateVisibleRect(target,template);
 
@@ -4351,8 +4386,19 @@ async function exportFinalImage(){
       throw new Error('テンプレ画像の表示範囲を取得できませんでした。');
     }
 
-    const naturalWidth=Math.max(1,Number(template.naturalWidth||Math.round(visible.width)));
-    const naturalHeight=Math.max(1,Number(template.naturalHeight||Math.round(visible.height)));
+    const naturalWidth=Math.max(
+      1,
+      Number(template.naturalWidth||Math.round(visible.width))
+    );
+    const naturalHeight=Math.max(
+      1,
+      Number(template.naturalHeight||Math.round(visible.height))
+    );
+
+    /*
+      The clean capture document itself is exactly the template's original
+      pixel size/aspect ratio. No human cropping and no surrounding workspace.
+    */
     const scale=naturalWidth/visible.width;
 
     const clone=target.cloneNode(true);
@@ -4365,6 +4411,7 @@ async function exportFinalImage(){
       img.loading='eager';
       img.decoding='sync';
       img.draggable=false;
+      img.setAttribute('crossorigin','anonymous');
     });
 
     clone.removeAttribute('id');
@@ -4378,6 +4425,7 @@ async function exportFinalImage(){
     clone.style.setProperty('margin','0','important');
     clone.style.setProperty('padding','0','important');
     clone.style.setProperty('border','0','important');
+    clone.style.setProperty('outline','0','important');
     clone.style.setProperty('border-radius','0','important');
     clone.style.setProperty('box-shadow','none','important');
     clone.style.setProperty('transform-origin','0 0','important');
@@ -4388,13 +4436,25 @@ async function exportFinalImage(){
       .map(el=>el.textContent||'')
       .join('\n');
 
+    /*
+      Keep about:blank because it inherits the opener's origin.
+      It is used only as a clean render surface and closes automatically.
+    */
+    shotWin=window.open('about:blank','_blank');
+
+    if(!shotWin){
+      throw new Error(
+        '画像保存用タブを開けませんでした。ポップアップを許可してから、もう一度お試しください。'
+      );
+    }
+
     const doc=shotWin.document;
     doc.open();
     doc.write(`<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>MAGIA MATRIX — 高画質スクショ用</title>
+<title>MAGIA MATRIX — 画像保存中</title>
 <style>
 ${styleText}
 html,body{
@@ -4417,6 +4477,7 @@ html,body{
   margin:0!important;
   padding:0!important;
   border:0!important;
+  outline:0!important;
   border-radius:0!important;
   box-shadow:none!important;
   overflow:hidden!important;
@@ -4428,10 +4489,10 @@ html,body{
 </html>`);
     doc.close();
 
-    const imported=doc.importNode(clone,true);
-    doc.getElementById('magiaCaptureRoot').appendChild(imported);
+    const root=doc.getElementById('magiaCaptureRoot');
+    root.appendChild(doc.importNode(clone,true));
 
-    const captureCanvas=doc.querySelector('#magiaCaptureRoot > .canvas');
+    const captureCanvas=root.firstElementChild;
     if(captureCanvas){
       captureCanvas.style.setProperty('background','transparent','important');
       captureCanvas.style.setProperty('border','0','important');
@@ -4440,17 +4501,96 @@ html,body{
       captureCanvas.style.setProperty('box-shadow','none','important');
     }
 
-    if($('#connectionStatus')){
-      $('#connectionStatus').textContent='高画質スクショ用タブを開きました';
-      $('#connectionStatus').title='新しいタブをChromeのスクリーンショット機能で撮影してください';
+    /*
+      Re-load external images with crossorigin set BEFORE the request.
+      data:/blob: images remain untouched.
+    */
+    root.querySelectorAll('img').forEach(img=>{
+      const src=img.getAttribute('src')||'';
+      if(!src||src.startsWith('data:')||src.startsWith('blob:'))return;
+      img.removeAttribute('src');
+      img.crossOrigin='anonymous';
+      img.src=src;
+    });
+
+    await waitCaptureDocumentImages(root);
+
+    if(doc.fonts?.ready){
+      try{await doc.fonts.ready}catch{}
     }
 
-    shotWin.focus();
+    await new Promise(resolve=>
+      shotWin.requestAnimationFrame(()=>
+        shotWin.requestAnimationFrame(resolve)
+      )
+    );
+
+    /*
+      html2canvas is now used only on the CLEAN, exact-size capture document.
+      Unlike the earlier failed approach, there is no large white workspace,
+      object-fit letterbox area, or manual coordinate crop in this stage.
+    */
+    const renderer=await ensureScreenshotRenderer();
+
+    const rendered=await renderer(root,{
+      backgroundColor:null,
+      scale:1,
+      useCORS:true,
+      allowTaint:false,
+      logging:false,
+      imageTimeout:20000,
+      removeContainer:true,
+      foreignObjectRendering:false,
+      width:naturalWidth,
+      height:naturalHeight,
+      windowWidth:naturalWidth,
+      windowHeight:naturalHeight,
+      scrollX:0,
+      scrollY:0
+    });
+
+    /*
+      Force exact output dimensions without any human cropping.
+      Usually rendered is already exact; this is only a defensive guard.
+    */
+    let finalCanvas=rendered;
+
+    if(rendered.width!==naturalWidth||rendered.height!==naturalHeight){
+      finalCanvas=document.createElement('canvas');
+      finalCanvas.width=naturalWidth;
+      finalCanvas.height=naturalHeight;
+      const ctx=finalCanvas.getContext('2d');
+      if(!ctx)throw new Error('画像保存用Canvasを作成できませんでした。');
+      ctx.drawImage(
+        rendered,
+        0,0,rendered.width,rendered.height,
+        0,0,naturalWidth,naturalHeight
+      );
+    }
+
+    const blob=await canvasToBlob(finalCanvas,'image/png');
+    blobDownload(blob,'MAGIA-MATRIX.png');
+
+    if($('#connectionStatus')){
+      $('#connectionStatus').textContent='画像を保存しました';
+      $('#connectionStatus').title='MAGIA-MATRIX.png';
+    }
 
   }catch(err){
-    console.error('capture view failed:',err);
-    try{shotWin.close()}catch{}
-    alert(err?.message||'撮影用画面を作成できませんでした。');
+    console.error('automatic screenshot save failed:',err);
+    alert(
+      (err?.message||'画像保存に失敗しました。')+
+      '\n\nページを再読み込みして、もう一度お試しください。'
+    );
+  }finally{
+    if(shotWin && !shotWin.closed){
+      try{shotWin.close()}catch{}
+    }
+
+    if(button){
+      button.disabled=false;
+      button.textContent=oldText;
+    }
   }
 }
 
