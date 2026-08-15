@@ -2065,6 +2065,7 @@ button{cursor:pointer}
 /* Browser text outline.
    JS builds a rounded multi-shadow ring so the outline looks smooth, not jagged. */
 .text-outline{
+  /* text-shadow is painted behind the full text run; never use a foreground stroke here. */
   paint-order:fill!important;
   -webkit-text-stroke:0 transparent!important;
   filter:none!important;
@@ -2123,7 +2124,7 @@ button{cursor:pointer}
 }
 
 .placed.comment-editing{
-  z-index:1000!important;
+  z-index:1000000!important;
 }
 
 .placed-avatar{
@@ -4314,6 +4315,67 @@ function syncLegacyCoordsFromTemplate(){
   });
 }
 
+function ensurePlacedZOrders(state=appState()){
+  let maxZ=0;
+  let changed=false;
+  const placed=[];
+
+  items.forEach((it,index)=>{
+    const local=state.items?.[it.id];
+    if(!local?.placed)return;
+    const z=Number(local.zOrder);
+    if(Number.isFinite(z)&&z>0){
+      maxZ=Math.max(maxZ,z);
+    }else{
+      placed.push({it,index,local});
+    }
+  });
+
+  placed.forEach(entry=>{
+    maxZ+=1;
+    entry.local.zOrder=maxZ;
+    changed=true;
+  });
+
+  if(changed){
+    saveState(state);
+    saveCurrentTemplateState(state);
+  }
+  return state;
+}
+
+function orderedPlacedItems(state=appState()){
+  return items
+    .map((it,index)=>({it,index,local:state.items?.[it.id]}))
+    .filter(entry=>entry.local?.placed)
+    .sort((a,b)=>{
+      const az=Number(a.local?.zOrder)||0;
+      const bz=Number(b.local?.zOrder)||0;
+      return az-bz || a.index-b.index;
+    })
+    .map(entry=>entry.it);
+}
+
+function bringPlacedToFront(id,el=null){
+  let nextZ=1;
+  const state=appState();
+  Object.values(state.items||{}).forEach(local=>{
+    if(!local?.placed)return;
+    const z=Number(local.zOrder);
+    if(Number.isFinite(z))nextZ=Math.max(nextZ,z+1);
+  });
+
+  const local=state.items?.[id];
+  if(!local)return;
+  local.zOrder=nextZ;
+  saveState(state);
+  saveCurrentTemplateState(state);
+
+  const it=items.find(item=>item.id===id);
+  if(it)it.local=local;
+  if(el)el.style.zIndex=String(nextZ);
+}
+
 function renderPlaced(){
   const canvas=$('#canvas');
   const overlay=$('#templateOverlay');
@@ -4324,19 +4386,20 @@ function renderPlaced(){
   const hasTemplateSpace=migrateTemplateCoordinatesIfPossible();
   syncTemplateOverlayRect();
 
-  const s=appState(),d=s.display||{};
+  const s=ensurePlacedZOrders(appState()),d=s.display||{};
   document.documentElement.style.setProperty('--icon-size',(d.iconSize||72)+'px');
   const parent=(hasTemplateSpace&&overlay)?overlay:canvas;
   const geom=hasTemplateSpace?templateGeometry():null;
   const uiScale=hasTemplateSpace?currentTemplateUiScale(s):1;
 
-  items.forEach(it=>{
+  orderedPlacedItems(s).forEach(it=>{
     const l=s.items?.[it.id];
     if(!l?.placed)return;
 
     const el=document.createElement('div');
     el.className='placed';
     el.dataset.id=it.id;
+    el.style.zIndex=String(Number(l.zOrder)||1);
     if(hasTemplateSpace){
       const p=getTemplatePoint(l,geom);
       el.style.left=p.x+'%';
@@ -4404,6 +4467,7 @@ function startPlacedDrag(e,id,el){
   if(e.button!=null&&e.button!==0)return;
   if(e.target.closest('.inline-comment-editor,textarea,input,select,button'))return;
 
+  bringPlacedToFront(id,el);
   e.preventDefault();
   e.stopPropagation();
 
@@ -4978,10 +5042,10 @@ async function exportFinalImage(){
   };
 
   function drawMultilineText(ctx,text,x,y,maxWidth,color,outline,font,lineHeight,align='center'){
-    const lines=exportWrapText(ctx,String(text||''),maxWidth);
-    const totalHeight=lineHeight*Math.max(1,lines.length);
     ctx.save();
     ctx.font=font;
+    const lines=exportWrapText(ctx,String(text||''),maxWidth);
+    const totalHeight=lineHeight*Math.max(1,lines.length);
     ctx.textAlign=align;
     ctx.textBaseline='middle';
     ctx.lineJoin='round';
@@ -4997,11 +5061,16 @@ async function exportFinalImage(){
     if(outlineWidth>0.01){
       ctx.lineWidth=outlineWidth;
       ctx.strokeStyle=outlineColor;
+      /* v106: draw every outline first so a thick lower-line outline can never cover an upper glyph. */
+      lines.forEach((line,i)=>{
+        const yy=y-totalHeight/2+lineHeight*(i+.5);
+        if(String(line||''))ctx.strokeText(line,x,yy);
+      });
     }
+    /* Fill pass always comes after the entire outline pass. */
     ctx.fillStyle=color;
     lines.forEach((line,i)=>{
       const yy=y-totalHeight/2+lineHeight*(i+.5);
-      if(outlineWidth>0.01 && String(line||''))ctx.strokeText(line,x,yy);
       ctx.fillText(line,x,yy);
     });
     ctx.restore();
@@ -5064,16 +5133,18 @@ async function exportFinalImage(){
     const nameFontSize=px(d.nameFontSize||13)*uiRenderScale;
     const nameLineHeight=nameFontSize*1.2;
     const commentFontSize=(px(d.commentFontSize||10))*uiRenderScale;
-    const commentLineHeight=commentFontSize*1.35;
-    const commentGap=8*uiRenderScale;
+    /* v105: mirror the live .placed-comment CSS exactly enough that long text wraps in the same place. */
+    const commentLineHeight=commentFontSize*1.15;
+    const commentGap=0;
     const nameGap=5*uiRenderScale;
     const iconLabelWidth=(defaultIconSize+70)*uiRenderScale;
-    const commentMaxWidth=180*uiRenderScale;
-    const commentPadX=7*uiRenderScale;
-    const commentPadY=4*uiRenderScale;
-    const commentRadius=7*uiRenderScale;
+    const commentMaxWidth=220*uiRenderScale;
+    const commentPadX=5*uiRenderScale;
+    const commentPadY=2*uiRenderScale;
+    const commentRadius=6*uiRenderScale;
 
-    for(const it of items){
+    ensurePlacedZOrders(s);
+    for(const it of orderedPlacedItems(s)){
       const l=s.items?.[it.id];
       if(!l?.placed)continue;
 
@@ -5117,16 +5188,17 @@ async function exportFinalImage(){
       if(d.showComment!==false && commentText){
         const pos=l.commentPosition||'top';
         const font=`500 ${commentFontSize}px ${commentFontFamily}`;
+        const boxOn=(d.commentBox||'on')==='on';
+        const commentTextMaxWidth=Math.max(12,commentMaxWidth-(boxOn?commentPadX*2:0));
         const metrics=measureWrappedText(
           ctx,
           commentText,
-          Math.max(12,commentMaxWidth-((d.commentBox||'on')==='on'?commentPadX*2:0)),
+          commentTextMaxWidth,
           font,
           commentLineHeight
         );
 
-        const boxOn=(d.commentBox||'on')==='on';
-        const bubbleW=boxOn ? metrics.width+commentPadX*2 : metrics.width;
+        const bubbleW=boxOn ? Math.min(commentMaxWidth,metrics.width+commentPadX*2) : metrics.width;
         const bubbleH=boxOn ? metrics.height+commentPadY*2 : metrics.height;
 
         let bx=0,by=0,tx=0,ty=0,align='center';
@@ -5139,15 +5211,15 @@ async function exportFinalImage(){
         }else if(pos==='left'){
           bx=cx-iconSize/2-commentGap-bubbleW;
           by=cy-bubbleH/2;
-          tx=bx+(boxOn?commentPadX:0)+metrics.width/2;
+          tx=bx+bubbleW-(boxOn?commentPadX:0);
           ty=cy;
-          align='center';
+          align='right';
         }else if(pos==='right'){
           bx=cx+iconSize/2+commentGap;
           by=cy-bubbleH/2;
-          tx=bx+(boxOn?commentPadX:0)+metrics.width/2;
+          tx=bx+(boxOn?commentPadX:0);
           ty=cy;
-          align='center';
+          align='left';
         }else{
           bx=cx-bubbleW/2;
           by=cy-iconSize/2-commentGap-bubbleH;
@@ -5172,7 +5244,7 @@ async function exportFinalImage(){
           commentText,
           tx,
           ty,
-          Math.max(12,commentMaxWidth-(boxOn?commentPadX*2:0)),
+          commentTextMaxWidth,
           comColor,
           commentOutline,
           font,
