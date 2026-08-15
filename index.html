@@ -2400,6 +2400,90 @@ button{cursor:pointer}
   box-shadow:0 3px 12px rgba(30,55,70,.10);
 }
 
+
+
+/* v108: cleaner white display-settings menu */
+#settings{background:#fff!important;border-left:1px solid #e9edef!important}
+#settings .display-head{padding:9px 11px 8px!important;background:#fff!important;border-bottom:1px solid #eef1f3!important}
+#settings .display-head-title{font-size:10px!important;font-weight:700!important;letter-spacing:.02em!important;color:#31383e!important}
+#settings .display-settings-body{display:block!important;padding:0 10px 12px!important;background:#fff!important}
+.settings-panel-section{padding:12px 1px 11px;border-bottom:1px solid #edf0f2;background:#fff}
+.settings-panel-section:last-child{border-bottom:0}
+.settings-panel-title{margin:0 0 10px;font-size:9px;line-height:1;font-weight:800;color:#677078;letter-spacing:.08em}
+.settings-row{margin:0 0 10px;padding:0!important;border:0!important;background:transparent!important}
+.settings-row:last-child,.settings-last-row{margin-bottom:0}
+.settings-row>label,.settings-color-row>label{display:block;margin:0 0 4px!important;font-size:8.5px!important;line-height:1.25;color:#687178!important;font-weight:500}
+.settings-label-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.settings-label-line label{margin:0!important;font-size:8.5px!important;color:#687178!important}
+.settings-value{flex:0 0 auto;font-size:8px;color:#8a9298;font-variant-numeric:tabular-nums}
+#settings select{width:100%!important;height:30px!important;padding:0 8px!important;border:1px solid #dfe4e7!important;border-radius:6px!important;background:#fff!important;color:#343b40!important;font-size:9px!important;box-shadow:none!important}
+#settings input[type="range"]{display:block;width:100%!important;margin:0!important}
+.settings-color-row{display:grid;grid-template-columns:minmax(0,1fr) 42px;align-items:center;gap:8px}
+.settings-color-row>label{margin:0!important}
+#settings .settings-color-row input[type="color"]{width:42px!important;height:28px!important;padding:2px!important;border:1px solid #dfe4e7!important;border-radius:6px!important;background:#fff!important;justify-self:end}
+.settings-check-row,.settings-section-toggle{display:flex!important;align-items:center!important;gap:7px!important;margin:0!important;color:#40484e!important;cursor:pointer;user-select:none}
+.settings-check-row{padding:3px 0 10px;font-size:8.5px!important;line-height:1.35}
+.settings-check-row input,.settings-section-toggle input{flex:0 0 auto;width:13px!important;height:13px!important;margin:0!important}
+.settings-accordion{padding-top:0}
+.settings-accordion-head{min-height:38px;display:flex;align-items:center}
+.settings-section-toggle{width:100%;font-size:10px!important;font-weight:750!important;color:#30383e!important}
+.settings-section-toggle span::after{content:"";display:inline-block;width:5px;height:5px;margin-left:7px;border-right:1px solid #8b9399;border-bottom:1px solid #8b9399;transform:translateY(-1px) rotate(45deg);transition:transform .14s ease}
+.settings-accordion:not(.open) .settings-section-toggle span::after{transform:translateY(1px) rotate(-45deg)}
+.settings-accordion-content{padding:1px 0 2px 20px}
+.settings-accordion:not(.open) .settings-accordion-content{display:none}
+#settings input[type="color"]:disabled,#settings select:disabled,#settings input[type="range"]:disabled{opacity:.38!important;cursor:not-allowed!important}
+
+/* v109: slim neutral sliders and conditional crop border option */
+#iconBorderColorRow[hidden]{display:none!important}
+#settings .settings-icon-shape-row{margin-bottom:7px!important}
+#settings input[type="range"]{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  width:100%!important;
+  height:12px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+#settings input[type="range"]::-webkit-slider-runnable-track{
+  height:2px!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:#d1d5d8!important;
+  box-shadow:none!important;
+}
+#settings input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  width:9px!important;
+  height:9px!important;
+  margin-top:-3.5px!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:#7e858a!important;
+  box-shadow:none!important;
+}
+#settings input[type="range"]:hover::-webkit-slider-thumb{background:#656d72!important}
+#settings input[type="range"]::-moz-range-track{
+  height:2px!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:#d1d5d8!important;
+  box-shadow:none!important;
+}
+#settings input[type="range"]::-moz-range-progress{background:#d1d5d8!important;height:2px!important}
+#settings input[type="range"]::-moz-range-thumb{
+  width:9px!important;
+  height:9px!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:#7e858a!important;
+  box-shadow:none!important;
+}
+
 </style>
 </head>
 <body>
@@ -2554,110 +2638,118 @@ button{cursor:pointer}
           </div>
           <div class="display-settings-body" id="displaySettingsBody">
 
-<div class="settings-section-label">アイコン</div>
+            <section class="settings-panel-section settings-icon-section">
+              <div class="settings-panel-title">アイコン</div>
 
-<div class="group">
-            <label>アイコン表示</label>
-            <select id="iconShape">
-              <option value="original">そのまま表示</option>
-              <option value="circle">丸に切り抜き</option>
-              <option value="square">角丸四角に切り抜き</option>
-            </select>
+              <div class="settings-row settings-icon-shape-row">
+                <select id="iconShape" aria-label="アイコン表示方法">
+                  <option value="original">アイコン切らずに表示</option>
+                  <option value="circle">丸に切り抜き</option>
+                  <option value="square">角丸四角に切り抜き</option>
+                </select>
+              </div>
+
+              <label class="settings-check-row" id="iconBorderColorRow"><input id="iconBorderUseTextColor" type="checkbox"><span>枠色にNotionプロパティの文字色を使う</span></label>
+
+              <div class="settings-row">
+                <div class="settings-label-line"><label>アイコンの大きさ</label><span class="settings-value"><span id="iconSizeValue">72</span> px</span></div>
+                <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
+              </div>
+            </section>
+
+            <section class="settings-panel-section settings-accordion open" id="nameSettingsSection">
+              <div class="settings-accordion-head">
+                <label class="settings-section-toggle"><input id="showName" type="checkbox" checked><span>名前を表示</span></label>
+              </div>
+              <div class="settings-accordion-content">
+                <div class="settings-row">
+                  <div class="settings-label-line"><label>文字サイズ</label><span class="settings-value"><span id="nameFontSizeValue">13</span> px</span></div>
+                  <input id="nameFontSize" type="range" min="6" max="30" step="1" value="13">
+                </div>
+
+                <div class="settings-row">
+                  <label>フォント</label>
+                  <select id="nameFontFamily">
+                    <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
+                    <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
+                    <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
+                    <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
+                    <option value="'Hiragino Mincho ProN',serif">游明朝</option>
+                    <option value="Georgia,'Times New Roman',serif">Serif</option>
+                    <option value="'Courier New',monospace">Monospace</option>
+                  </select>
+                </div>
+
+                <label class="settings-check-row"><input id="useIndividualTextColor" type="checkbox" checked><span>Notionプロパティの文字色を使う</span></label>
+
+                <div class="settings-row settings-color-row">
+                  <label>名前の文字色</label>
+                  <input id="globalTextColor" type="color" value="#202327">
+                </div>
+
+                <div class="settings-row settings-color-row">
+                  <label>縁取り色</label>
+                  <input id="nameOutlineColor" type="color" value="#ffffff">
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-label-line"><label>縁取り太さ</label><span class="settings-value"><span id="nameOutlineWidthValue">2.0</span> px</span></div>
+                  <input id="nameOutlineWidth" type="range" min="0" max="6" step="0.2" value="2">
+                </div>
+              </div>
+            </section>
+
+            <section class="settings-panel-section settings-accordion open" id="commentSettingsSection">
+              <div class="settings-accordion-head">
+                <label class="settings-section-toggle"><input id="showComment" type="checkbox" checked><span>コメントを表示</span></label>
+              </div>
+              <div class="settings-accordion-content">
+                <div class="settings-row">
+                  <div class="settings-label-line"><label>文字サイズ</label><span class="settings-value"><span id="commentFontSizeValue">10</span> px</span></div>
+                  <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
+                </div>
+
+                <div class="settings-row">
+                  <label>フォント</label>
+                  <select id="commentFontFamily">
+                    <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
+                    <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
+                    <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
+                    <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
+                    <option value="'Hiragino Mincho ProN',serif">游明朝</option>
+                    <option value="Georgia,'Times New Roman',serif">Serif</option>
+                    <option value="'Courier New',monospace">Monospace</option>
+                  </select>
+                </div>
+
+                <label class="settings-check-row"><input id="commentUseCharacterColor" type="checkbox" checked><span>Notionプロパティの文字色を使う</span></label>
+
+                <div class="settings-row settings-color-row">
+                  <label>コメント文字色</label>
+                  <input id="commentTextColor" type="color" value="#202327">
+                </div>
+
+                <div class="settings-row">
+                  <label>コメント枠</label>
+                  <select id="commentBox">
+                    <option value="on">あり</option>
+                    <option value="off">なし</option>
+                  </select>
+                </div>
+
+                <div class="settings-row settings-color-row">
+                  <label>縁取り色</label>
+                  <input id="commentOutlineColor" type="color" value="#ffffff">
+                </div>
+
+                <div class="settings-row settings-last-row">
+                  <div class="settings-label-line"><label>縁取り太さ</label><span class="settings-value"><span id="commentOutlineWidthValue">1.6</span> px</span></div>
+                  <input id="commentOutlineWidth" type="range" min="0" max="6" step="0.2" value="1.6">
+                </div>
+              </div>
+            </section>
+
           </div>
-
-          <div class="group wide">
-            <label>アイコンの大きさ</label>
-            <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
-            <div class="value"><span id="iconSizeValue">72</span> px</div>
-          </div>
-
-          <div class="group">
-            <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
-          </div>
-
-          <div class="group wide">
-            <label>名前の文字サイズ <span id="nameFontSizeValue">13</span>px</label>
-            <input id="nameFontSize" type="range" min="6" max="30" step="1" value="13">
-          </div>
-
-          <div class="group wide">
-            <label>文字色</label>
-            <input id="globalTextColor" type="color" value="#202327">
-            <label class="check"><input id="useIndividualTextColor" type="checkbox"> 指定した文字色を使う</label>
-            <label class="check"><input id="iconBorderUseTextColor" type="checkbox"> アイコンの周りの色＝文字色</label>
-          </div>
-
-          <div class="group">
-            <label>名前フォント</label>
-            <select id="nameFontFamily">
-              <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
-              <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
-              <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
-              <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
-              <option value="'Hiragino Mincho ProN',serif">ヒラギノ明朝</option>
-              <option value="Georgia,'Times New Roman',serif">Serif</option>
-              <option value="'Courier New',monospace">Monospace</option>
-            </select>
-          </div>
-
-          <div class="group wide">
-            <label>名前の縁取り色</label>
-            <input id="nameOutlineColor" type="color" value="#ffffff">
-            <label>名前の縁取り太さ <span id="nameOutlineWidthValue">2.0</span>px</label>
-            <input id="nameOutlineWidth" type="range" min="0" max="6" step="0.2" value="2">
-          </div>
-
-          <div class="settings-section-divider" aria-hidden="true"></div>
-          <div class="settings-section-label">コメント</div>
-
-          <div class="group">
-            <label class="check"><input id="showComment" type="checkbox" checked> コメントを表示</label>
-          </div>
-
-          <div class="group wide">
-            <label class="check"><input id="commentUseCharacterColor" type="checkbox" checked> キャラの文字色を使う</label>
-            <label>コメント文字色</label>
-            <input id="commentTextColor" type="color" value="#202327">
-          </div>
-
-          <div class="group wide">
-            <label>コメント文字サイズ <span id="commentFontSizeValue">10</span>px</label>
-            <input id="commentFontSize" type="range" min="8" max="24" step="1" value="10">
-          </div>
-          <div class="group">
-            <label>コメントフォント</label>
-            <select id="commentFontFamily">
-              <option value="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">標準</option>
-              <option value="'Yu Gothic','YuGothic',sans-serif">游ゴシック</option>
-              <option value="'Yu Mincho','YuMincho',serif">游明朝</option>
-              <option value="'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif">ヒラギノ角ゴ</option>
-              <option value="'Hiragino Mincho ProN',serif">ヒラギノ明朝</option>
-              <option value="Georgia,'Times New Roman',serif">Serif</option>
-              <option value="'Courier New',monospace">Monospace</option>
-            </select>
-          </div>
-
-          <div class="group">
-            <label>コメント枠</label>
-            <select id="commentBox">
-              <option value="on">あり</option>
-              <option value="off">なし</option>
-            </select>
-          </div>
-
-          <div class="group wide">
-            <label>コメントの縁取り色</label>
-            <input id="commentOutlineColor" type="color" value="#ffffff">
-            <label>コメントの縁取り太さ <span id="commentOutlineWidthValue">1.6</span>px</label>
-            <input id="commentOutlineWidth" type="range" min="0" max="6" step="0.2" value="1.6">
-          </div>
-
-
-          
-          </div>
-          </div>
-
-          
         </aside>
         
       </div>
@@ -2693,7 +2785,7 @@ button{cursor:pointer}
     <p class="help">左のアイコン一覧からテンプレへドラッグすると配置できます。配置済みアイコンを左のアイコン一覧側までドラッグして離すと、テンプレ上から配置解除できます。コメントや切り抜き設定は残るので、あとで再配置できます。</p>
 
     <h3>アイコンの切り抜き</h3>
-    <p class="help"><strong>そのまま表示</strong>では画像を切り抜かず、元画像全体を表示します。</p>
+    <p class="help"><strong>アイコン切らずに表示</strong>では画像を切り抜かず、元画像全体を表示します。</p>
     <p class="help"><strong>丸に切り抜き / 角丸四角に切り抜き</strong>では、アイコン一覧の画像をクリックすると切り抜き位置を調整できます。ドラッグで位置、マウスホイールやスライダーで拡大・縮小し、「保存」で位置を確定します。</p>
 
     <h3>コメント</h3>
@@ -3740,10 +3832,7 @@ function renderLibrary(){
     applyShapeClass(av);
 
     if(display.iconBorderUseTextColor){
-      const sourceChosen=(display.useIndividualTextColor!==false
-        ? (safeColor(it.color)||display.globalTextColor)
-        : display.globalTextColor
-      )||'#202327';
+      const sourceChosen=safeColor(it.color)||'#ffffff';
       av.classList.add('use-text-border');
       av.style.setProperty('--icon-border-color',sourceChosen);
     }
@@ -4172,18 +4261,28 @@ function characterTextColor(it,d){
 }
 
 function commentTextColor(it,d){
-  const characterColor=characterTextColor(it,d);
   return d.commentUseCharacterColor!==false
-    ? characterColor
+    ? (safeColor(it?.color)||safeColor(d.commentTextColor)||'#202327')
     : (safeColor(d.commentTextColor)||'#202327');
 }
 
+function syncNameColorControl(){
+  const useNotion=$('#useIndividualTextColor');
+  const picker=$('#globalTextColor');
+  if(!useNotion||!picker)return;
+  picker.disabled=useNotion.checked;
+}
 function syncCommentColorControl(){
-  const useCharacter=$('#commentUseCharacterColor');
+  const useNotion=$('#commentUseCharacterColor');
   const picker=$('#commentTextColor');
-  if(!useCharacter||!picker)return;
-  picker.disabled=useCharacter.checked;
-  picker.style.opacity=useCharacter.checked?'.45':'1';
+  if(!useNotion||!picker)return;
+  picker.disabled=useNotion.checked;
+}
+function syncSettingsAccordions(){
+  const nameSection=$('#nameSettingsSection');
+  const commentSection=$('#commentSettingsSection');
+  if(nameSection)nameSection.classList.toggle('open',$('#showName')?.checked!==false);
+  if(commentSection)commentSection.classList.toggle('open',$('#showComment')?.checked!==false);
 }
 
 function templateSpaceReady(){
@@ -4421,7 +4520,7 @@ function renderPlaced(){
 
     if(d.iconBorderUseTextColor){
       av.classList.add('use-text-border');
-      av.style.setProperty('--icon-border-color',chosen);
+      av.style.setProperty('--icon-border-color',safeColor(it.color)||'#ffffff');
     }
 
     const im=document.createElement('img');
@@ -5156,7 +5255,7 @@ async function exportFinalImage(){
 
       const charColor=characterTextColor(it,d);
       const comColor=commentTextColor(it,d);
-      const borderColor=d.iconBorderUseTextColor ? (charColor||'#202327') : '#ffffff';
+      const borderColor=d.iconBorderUseTextColor ? (safeColor(it.color)||'#ffffff') : '#ffffff';
       const src=displayImage(it)||'';
 
       if(src){
@@ -5380,6 +5479,13 @@ function toggleDisplayPanel(force){
   localStorage.setItem('magiaMatrix.displayPanel.closed',next?'0':'1');
 }
 
+function syncIconBorderColorControl(){
+  const row=$('#iconBorderColorRow');
+  const shape=$('#iconShape');
+  if(!row||!shape)return;
+  row.hidden=shape.value==='original';
+}
+
 function restoreDisplay(){
   const d=appState().display||{};
   const nameOutlineWidth=getNameOutlineWidth(d);
@@ -5390,13 +5496,16 @@ function restoreDisplay(){
   $('#commentOutlineColor').value=getCommentOutlineColor(d);
   $('#commentOutlineWidth').value=commentOutlineWidth;$('#commentOutlineWidthValue').textContent=commentOutlineWidth.toFixed(1);
   $('#scaleWithTemplate').checked=d.scaleWithTemplate!==false;
-  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor===false;
+  $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor!==false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#commentUseCharacterColor').checked=d.commentUseCharacterColor!==false;
   $('#commentTextColor').value=safeColor(d.commentTextColor)||'#202327';
   $('#nameFontFamily').value=getNameFontFamily(d);
   $('#commentFontFamily').value=getCommentFontFamily(d);
+  syncIconBorderColorControl();
+  syncNameColorControl();
   syncCommentColorControl();
+  syncSettingsAccordions();
 }
 function bindDisplay(){
   const readDisplay=()=>{
@@ -5409,7 +5518,7 @@ function bindDisplay(){
       showName:$('#showName').checked,
       showComment:$('#showComment').checked,
       globalTextColor:$('#globalTextColor').value,
-      useIndividualTextColor:!$('#useIndividualTextColor').checked,
+      useIndividualTextColor:$('#useIndividualTextColor').checked,
       commentUseCharacterColor:$('#commentUseCharacterColor').checked,
       commentTextColor:$('#commentTextColor').value,
       iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
@@ -5449,7 +5558,10 @@ function bindDisplay(){
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
     $('#nameOutlineWidthValue').textContent=Number($('#nameOutlineWidth').value).toFixed(1);
     $('#commentOutlineWidthValue').textContent=Number($('#commentOutlineWidth').value).toFixed(1);
+    syncIconBorderColorControl();
+    syncNameColorControl();
     syncCommentColorControl();
+    syncSettingsAccordions();
 
     renderPlaced();
 
