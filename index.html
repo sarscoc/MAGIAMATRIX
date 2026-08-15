@@ -5636,6 +5636,16 @@ $('#displaySettingsToggle').onclick=e=>{
   toggleDisplayPanel(false);
 };
 
+/* v110: close Display Settings when clicking anywhere outside the popup */
+document.addEventListener('pointerdown',e=>{
+  const panel=$('#settings');
+  const menuBtn=$('#settingsMenuBtn');
+  if(!panel||panel.classList.contains('floating-closed'))return;
+  if(panel.contains(e.target))return;
+  if(menuBtn&&menuBtn.contains(e.target))return;
+  toggleDisplayPanel(false);
+});
+
 $('#exportImageBtn').onclick=exportFinalImage;
 $('#newTemplateBtn').onclick=createNewTemplate;
 $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
