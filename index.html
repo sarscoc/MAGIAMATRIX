@@ -1244,6 +1244,37 @@ button{cursor:pointer}
 
 .template-meta{display:none!important}
 .stage-toolbar-actions{display:flex;align-items:center;gap:6px}
+
+/* v104: important template-scaling toggle lives in the top toolbar */
+.toolbar-scale-check{
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:0 7px;
+  margin:0;
+  border:0;
+  background:transparent;
+  color:#596168;
+  font-size:9px;
+  font-weight:700;
+  line-height:1;
+  white-space:nowrap;
+  cursor:pointer;
+  user-select:none;
+}
+.toolbar-scale-check input{
+  width:13px;
+  height:13px;
+  margin:0;
+  flex:0 0 auto;
+  cursor:pointer;
+}
+.toolbar-scale-check:hover{color:#30373c}
+@media(max-width:760px){
+  .stage-toolbar-actions{flex-wrap:wrap!important}
+  .toolbar-scale-check{order:3;width:100%;justify-content:flex-end;padding-right:0}
+}
 #exportImageBtn{height:28px;padding:0 10px;font-size:9px;border-radius:7px;white-space:nowrap}
 .placed{overflow:visible!important}
 .placed-comment{display:block!important;visibility:visible!important;opacity:1!important;z-index:30!important;pointer-events:none!important}
@@ -2493,6 +2524,10 @@ button{cursor:pointer}
         <div class="stage-area-label">テンプレ操作</div>
         <div class="stage-toolbar-actions">
           <button class="btn" id="exportImageBtn" type="button" title="テンプレだけの撮影用画面を自動生成してPNG保存">画像保存（SS）</button>
+          <label class="toolbar-scale-check" title="テンプレ表示の拡大・縮小に合わせて、アイコン・名前・コメントも追従して拡縮します">
+            <input id="scaleWithTemplate" type="checkbox" checked>
+            <span>文字とアイコンをテンプレに追従して拡縮</span>
+          </label>
           <div class="stage-toolbar-row">
             <button class="btn new-template-btn" id="newTemplateBtn" type="button">＋ 新しいテンプレを作る</button>
             <button class="settings-menu-btn toolbar-settings-btn" id="settingsMenuBtn" type="button" title="表示設定">≡</button>
@@ -2533,10 +2568,6 @@ button{cursor:pointer}
             <label>アイコンの大きさ</label>
             <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
             <div class="value"><span id="iconSizeValue">72</span> px</div>
-          </div>
-
-          <div class="group wide">
-            <label class="check"><input id="scaleWithTemplate" type="checkbox"> 文字とアイコンをテンプレと一緒に拡縮する</label>
           </div>
 
           <div class="group">
@@ -2741,7 +2772,7 @@ let imageBlobUrls=new Map(), imageCacheMeta=new Map(), imageCachePromises=new Ma
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,scaleWithTemplate:false,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,scaleWithTemplate:true,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -4242,7 +4273,7 @@ function syncTemplateOverlayRect(){
   overlay.style.height=geom.visible.height+'px';
 }
 function currentTemplateUiScale(state=appState()){
-  if(state?.display?.scaleWithTemplate!==true)return 1;
+  if(state?.display?.scaleWithTemplate===false)return 1;
   const geom=templateGeometry();
   if(!geom)return 1;
   const base=commonTemplateScaleBase(state,geom.visible.width);
@@ -5023,7 +5054,7 @@ async function exportFinalImage(){
     const shape=currentIconShape();
     const nameFontFamily=getNameFontFamily(d);
     const commentFontFamily=getCommentFontFamily(d);
-    const liveUiScale=d.scaleWithTemplate===true
+    const liveUiScale=d.scaleWithTemplate!==false
       ? Math.max(.05,Math.min(20,visible.width/commonTemplateScaleBase(s,visible.width)))
       : 1;
     const uiRenderScale=renderScale*liveUiScale;
@@ -5286,7 +5317,7 @@ function restoreDisplay(){
   $('#nameOutlineWidth').value=nameOutlineWidth;$('#nameOutlineWidthValue').textContent=nameOutlineWidth.toFixed(1);
   $('#commentOutlineColor').value=getCommentOutlineColor(d);
   $('#commentOutlineWidth').value=commentOutlineWidth;$('#commentOutlineWidthValue').textContent=commentOutlineWidth.toFixed(1);
-  $('#scaleWithTemplate').checked=d.scaleWithTemplate===true;
+  $('#scaleWithTemplate').checked=d.scaleWithTemplate!==false;
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor===false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#commentUseCharacterColor').checked=d.commentUseCharacterColor!==false;
@@ -5332,7 +5363,7 @@ function bindDisplay(){
       Save the newly selected display mode FIRST, then redraw.
     */
     const s=appState();
-    const wasScale=s.display?.scaleWithTemplate===true;
+    const wasScale=s.display?.scaleWithTemplate!==false;
     const nextDisplay=readDisplay();
     s.display=nextDisplay;
     if(changed==='scaleWithTemplate' && nextDisplay.scaleWithTemplate && !wasScale){
