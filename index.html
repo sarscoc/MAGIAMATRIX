@@ -2305,6 +2305,44 @@ button{cursor:pointer}
   cursor:not-allowed;
 }
 
+/* v103: template-relative overlay keeps placed items attached to the template image */
+.template-overlay{
+  position:absolute!important;
+  z-index:6!important;
+  pointer-events:none!important;
+  overflow:visible!important;
+}
+.template-overlay .placed{
+  pointer-events:auto!important;
+  transform-origin:center center!important;
+}
+
+/* v103: the settings title belongs to the top of the menu, not the scrolling body */
+#settings{
+  overflow:hidden!important;
+  padding:0!important;
+}
+#settings:not(.floating-closed){
+  display:flex!important;
+  flex-direction:column!important;
+}
+#settings .display-head{
+  position:relative!important;
+  top:auto!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+  padding:8px 8px 7px!important;
+  background:rgba(255,255,255,.98)!important;
+  border-bottom:1px solid rgba(220,225,228,.9)!important;
+  z-index:3!important;
+}
+#settings .display-settings-body{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  padding:8px!important;
+}
+
 /* v91: drag a placed icon back to the library to remove it from the template */
 #libraryPane{position:relative}
 #libraryPane.remove-drop-active{
@@ -2464,6 +2502,7 @@ button{cursor:pointer}
       <div class="stage">
         <div class="canvas" id="canvas">
           <img class="template-img" id="templateImg" alt="">
+          <div class="template-overlay" id="templateOverlay" aria-hidden="true"></div>
           <div class="template-drop" id="templateDrop">
             <div>
               <strong>テンプレ画像をここへドロップ</strong><br>
@@ -2494,6 +2533,10 @@ button{cursor:pointer}
             <label>アイコンの大きさ</label>
             <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
             <div class="value"><span id="iconSizeValue">72</span> px</div>
+          </div>
+
+          <div class="group wide">
+            <label class="check"><input id="scaleWithTemplate" type="checkbox"> 文字とアイコンをテンプレと一緒に拡縮する</label>
           </div>
 
           <div class="group">
@@ -2698,7 +2741,7 @@ let imageBlobUrls=new Map(), imageCacheMeta=new Map(), imageCachePromises=new Ma
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,scaleWithTemplate:false,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -3773,16 +3816,25 @@ function startLibraryDrag(e,it,card){
       return;
     }
 
-    const c=$('#canvas').getBoundingClientRect();
+    const canvas=$('#canvas');
+    const c=canvas.getBoundingClientRect();
     if(
       ev.clientX>=c.left&&ev.clientX<=c.right&&
       ev.clientY>=c.top&&ev.clientY<=c.bottom
     ){
-      placeItem(
-        it.id,
-        (ev.clientX-c.left)/c.width*100,
-        (ev.clientY-c.top)/c.height*100
-      );
+      const geom=templateSpaceReady()?templateGeometry():null;
+      if(geom){
+        const tx=((ev.clientX-c.left-geom.visible.left)/geom.visible.width)*100;
+        const ty=((ev.clientY-c.top-geom.visible.top)/geom.visible.height)*100;
+        placeItem(it.id,tx,ty,true);
+      }else{
+        placeItem(
+          it.id,
+          (ev.clientX-c.left)/c.width*100,
+          (ev.clientY-c.top)/c.height*100,
+          false
+        );
+      }
     }
   };
 
@@ -3790,12 +3842,23 @@ function startLibraryDrag(e,it,card){
   window.addEventListener('pointerup',up,{once:true});
   window.addEventListener('pointercancel',up,{once:true});
 }
-function placeItem(id,x,y){
+function placeItem(id,x,y,isTemplatePoint=templateSpaceReady()){
   mutate(s=>{
     const l=s.items[id]||(s.items[id]={});
     l.placed=true;
-    l.x=Math.max(2,Math.min(98,x));
-    l.y=Math.max(2,Math.min(98,y));
+    if(isTemplatePoint&&templateSpaceReady()){
+      const geom=templateGeometry();
+      const tx=Math.max(2,Math.min(98,x));
+      const ty=Math.max(2,Math.min(98,y));
+      l.templateX=tx;l.templateY=ty;l.coordVersion=2;
+      const legacy=templateToLegacyPoint(tx,ty,geom);
+      l.x=legacy.x;l.y=legacy.y;
+      const base=commonTemplateScaleBase(s,geom?.visible?.width||1);
+      l.scaleBaseWidth=base;
+    }else{
+      l.x=Math.max(2,Math.min(98,x));
+      l.y=Math.max(2,Math.min(98,y));
+    }
     if(!l.commentPosition)l.commentPosition='top';
     if(!l.crop)l.crop={x:0,y:0,zoom:1};
   });
@@ -4091,12 +4154,150 @@ function syncCommentColorControl(){
   picker.style.opacity=useCharacter.checked?'.45':'1';
 }
 
+function templateSpaceReady(){
+  const c=$('#canvas'),im=$('#templateImg');
+  return !!(c?.classList.contains('has-template') && Number(im?.naturalWidth||0)>0 && Number(im?.naturalHeight||0)>0);
+}
+function templateGeometry(){
+  const canvas=$('#canvas'),template=$('#templateImg');
+  if(!canvas||!template)return null;
+  const canvasRect=canvas.getBoundingClientRect();
+  if(!canvasRect.width||!canvasRect.height)return null;
+  const visible=getTemplateVisibleRect(canvas,template);
+  if(!visible.width||!visible.height)return null;
+  return {canvas,template,canvasRect,visible};
+}
+function legacyToTemplatePoint(local,geom=templateGeometry()){
+  if(!geom)return {x:Number(local?.x??50),y:Number(local?.y??50)};
+  const px=(Number(local?.x??50)/100)*geom.canvasRect.width;
+  const py=(Number(local?.y??50)/100)*geom.canvasRect.height;
+  return {
+    x:((px-geom.visible.left)/geom.visible.width)*100,
+    y:((py-geom.visible.top)/geom.visible.height)*100
+  };
+}
+function templateToLegacyPoint(tx,ty,geom=templateGeometry()){
+  if(!geom)return {x:Number(tx??50),y:Number(ty??50)};
+  const px=geom.visible.left+(Number(tx??50)/100)*geom.visible.width;
+  const py=geom.visible.top+(Number(ty??50)/100)*geom.visible.height;
+  return {
+    x:(px/geom.canvasRect.width)*100,
+    y:(py/geom.canvasRect.height)*100
+  };
+}
+function getTemplatePoint(local,geom=templateGeometry()){
+  if(local?.coordVersion===2 && Number.isFinite(Number(local.templateX)) && Number.isFinite(Number(local.templateY))){
+    return {x:Number(local.templateX),y:Number(local.templateY)};
+  }
+  return legacyToTemplatePoint(local,geom);
+}
+function commonTemplateScaleBase(state=appState(),fallbackWidth=0){
+  const vals=Object.values(state?.items||{});
+  for(const local of vals){
+    const n=Number(local?.scaleBaseWidth);
+    if(local?.placed && Number.isFinite(n) && n>0)return n;
+  }
+  return Math.max(1,Number(fallbackWidth)||1);
+}
+function migrateTemplateCoordinatesIfPossible(){
+  if(!templateSpaceReady())return false;
+  const geom=templateGeometry();
+  if(!geom)return false;
+  const state=appState();
+  let changed=false;
+  const existingBase=commonTemplateScaleBase(state,geom.visible.width);
+  Object.values(state.items||{}).forEach(local=>{
+    if(!local?.placed)return;
+    if(local.coordVersion!==2 || !Number.isFinite(Number(local.templateX)) || !Number.isFinite(Number(local.templateY))){
+      const p=legacyToTemplatePoint(local,geom);
+      local.templateX=p.x;
+      local.templateY=p.y;
+      local.coordVersion=2;
+      changed=true;
+    }
+    if(!Number.isFinite(Number(local.scaleBaseWidth)) || Number(local.scaleBaseWidth)<=0){
+      local.scaleBaseWidth=existingBase;
+      changed=true;
+    }
+  });
+  if(changed){
+    saveState(state);
+    saveCurrentTemplateState(state);
+    items.forEach(it=>{if(state.items?.[it.id])it.local=state.items[it.id]});
+  }
+  return true;
+}
+function syncTemplateOverlayRect(){
+  const overlay=$('#templateOverlay');
+  const canvas=$('#canvas');
+  if(!overlay||!canvas)return;
+  const geom=templateGeometry();
+  if(!geom){
+    overlay.style.left='0px';overlay.style.top='0px';overlay.style.width='100%';overlay.style.height='100%';
+    return;
+  }
+  overlay.style.left=geom.visible.left+'px';
+  overlay.style.top=geom.visible.top+'px';
+  overlay.style.width=geom.visible.width+'px';
+  overlay.style.height=geom.visible.height+'px';
+}
+function currentTemplateUiScale(state=appState()){
+  if(state?.display?.scaleWithTemplate!==true)return 1;
+  const geom=templateGeometry();
+  if(!geom)return 1;
+  const base=commonTemplateScaleBase(state,geom.visible.width);
+  return Math.max(.05,Math.min(20,geom.visible.width/base));
+}
+function updatePlacedTemplateScale(){
+  const scale=currentTemplateUiScale();
+  document.querySelectorAll('#templateOverlay > .placed').forEach(el=>{
+    el.style.transform=`translate(-50%,-50%) scale(${scale})`;
+  });
+}
+let templateOverlaySyncRaf=0;
+function scheduleTemplateOverlaySync(){
+  if(templateOverlaySyncRaf)return;
+  templateOverlaySyncRaf=requestAnimationFrame(()=>{
+    templateOverlaySyncRaf=0;
+    syncTemplateOverlayRect();
+    updatePlacedTemplateScale();
+  });
+}
+function rebaseTemplateScalingAtCurrentWidth(state=appState()){
+  const geom=templateGeometry();
+  if(!geom)return;
+  Object.values(state.items||{}).forEach(local=>{
+    if(local?.placed)local.scaleBaseWidth=geom.visible.width;
+  });
+}
+function syncLegacyCoordsFromTemplate(){
+  if(!templateSpaceReady())return;
+  const geom=templateGeometry();
+  if(!geom)return;
+  mutate(state=>{
+    Object.values(state.items||{}).forEach(local=>{
+      if(!local?.placed || local.coordVersion!==2)return;
+      const p=templateToLegacyPoint(local.templateX,local.templateY,geom);
+      local.x=p.x;local.y=p.y;
+    });
+  });
+}
+
 function renderPlaced(){
-  const c=$('#canvas');
-  c.querySelectorAll('.placed').forEach(e=>e.remove());
+  const canvas=$('#canvas');
+  const overlay=$('#templateOverlay');
+  canvas.querySelectorAll(':scope > .placed').forEach(e=>e.remove());
+  overlay?.querySelectorAll(':scope > .placed').forEach(e=>e.remove());
+
+  syncTemplateOverlayRect();
+  const hasTemplateSpace=migrateTemplateCoordinatesIfPossible();
+  syncTemplateOverlayRect();
 
   const s=appState(),d=s.display||{};
   document.documentElement.style.setProperty('--icon-size',(d.iconSize||72)+'px');
+  const parent=(hasTemplateSpace&&overlay)?overlay:canvas;
+  const geom=hasTemplateSpace?templateGeometry():null;
+  const uiScale=hasTemplateSpace?currentTemplateUiScale(s):1;
 
   items.forEach(it=>{
     const l=s.items?.[it.id];
@@ -4105,8 +4306,15 @@ function renderPlaced(){
     const el=document.createElement('div');
     el.className='placed';
     el.dataset.id=it.id;
-    el.style.left=(l.x??50)+'%';
-    el.style.top=(l.y??50)+'%';
+    if(hasTemplateSpace){
+      const p=getTemplatePoint(l,geom);
+      el.style.left=p.x+'%';
+      el.style.top=p.y+'%';
+      el.style.transform=`translate(-50%,-50%) scale(${uiScale})`;
+    }else{
+      el.style.left=(l.x??50)+'%';
+      el.style.top=(l.y??50)+'%';
+    }
     el.style.setProperty('--item-icon-size',(Number(d.iconSize)||72)+'px');
 
     const chosen=characterTextColor(it,d);
@@ -4155,7 +4363,7 @@ function renderPlaced(){
     el.addEventListener('pointerdown',e=>startPlacedDrag(e,it.id,el));
     setupPlacedClickBehavior(el,it.id);
 
-    c.appendChild(el);
+    parent.appendChild(el);
   });
 
   document.querySelectorAll('.placed-name').forEach(el=>applyTextOutline(el,'name'));
@@ -4169,7 +4377,11 @@ function startPlacedDrag(e,id,el){
   e.stopPropagation();
 
   const canvas=$('#canvas');
-  const r=canvas.getBoundingClientRect();
+  const geom=templateGeometry();
+  const useTemplate=templateSpaceReady()&&!!geom;
+  const r=useTemplate
+    ? {width:geom.visible.width,height:geom.visible.height}
+    : canvas.getBoundingClientRect();
   if(!r.width||!r.height)return;
 
   const s=appState();
@@ -4178,8 +4390,9 @@ function startPlacedDrag(e,id,el){
 
   const startX=e.clientX;
   const startY=e.clientY;
-  const startPctX=Number(local.x??50);
-  const startPctY=Number(local.y??50);
+  const startPoint=useTemplate?getTemplatePoint(local,geom):{x:Number(local.x??50),y:Number(local.y??50)};
+  const startPctX=Number(startPoint.x??50);
+  const startPctY=Number(startPoint.y??50);
   const libraryPane=$('#libraryPane');
   const pointInLibrary=(x,y)=>{
     if(!libraryPane)return false;
@@ -4244,7 +4457,14 @@ function startPlacedDrag(e,id,el){
         const y=parseFloat(el.style.top)||startPctY;
         mutate(state=>{
           const l=state.items?.[id];
-          if(l){l.x=x;l.y=y}
+          if(!l)return;
+          if(useTemplate){
+            l.templateX=x;l.templateY=y;l.coordVersion=2;
+            const legacy=templateToLegacyPoint(x,y,geom);
+            l.x=legacy.x;l.y=legacy.y;
+          }else{
+            l.x=x;l.y=y;
+          }
         });
         const it=items.find(z=>z.id===id);
         if(it)it.local=appState().items[id];
@@ -4803,30 +5023,34 @@ async function exportFinalImage(){
     const shape=currentIconShape();
     const nameFontFamily=getNameFontFamily(d);
     const commentFontFamily=getCommentFontFamily(d);
-    const nameOutline={width:getNameOutlineWidth(d)*renderScale,color:getNameOutlineColor(d)};
-    const commentOutline={width:getCommentOutlineWidth(d)*renderScale,color:getCommentOutlineColor(d)};
+    const liveUiScale=d.scaleWithTemplate===true
+      ? Math.max(.05,Math.min(20,visible.width/commonTemplateScaleBase(s,visible.width)))
+      : 1;
+    const uiRenderScale=renderScale*liveUiScale;
+    const nameOutline={width:getNameOutlineWidth(d)*uiRenderScale,color:getNameOutlineColor(d)};
+    const commentOutline={width:getCommentOutlineWidth(d)*uiRenderScale,color:getCommentOutlineColor(d)};
     const defaultIconSize=px(d.iconSize||72);
-    const nameFontSize=px(d.nameFontSize||13)*renderScale;
+    const nameFontSize=px(d.nameFontSize||13)*uiRenderScale;
     const nameLineHeight=nameFontSize*1.2;
-    const commentFontSize=(px(d.commentFontSize||10))*renderScale;
+    const commentFontSize=(px(d.commentFontSize||10))*uiRenderScale;
     const commentLineHeight=commentFontSize*1.35;
-    const commentGap=8*renderScale;
-    const nameGap=5*renderScale;
-    const iconLabelWidth=(defaultIconSize+70)*renderScale;
-    const commentMaxWidth=180*renderScale;
-    const commentPadX=7*renderScale;
-    const commentPadY=4*renderScale;
-    const commentRadius=7*renderScale;
+    const commentGap=8*uiRenderScale;
+    const nameGap=5*uiRenderScale;
+    const iconLabelWidth=(defaultIconSize+70)*uiRenderScale;
+    const commentMaxWidth=180*uiRenderScale;
+    const commentPadX=7*uiRenderScale;
+    const commentPadY=4*uiRenderScale;
+    const commentRadius=7*uiRenderScale;
 
     for(const it of items){
       const l=s.items?.[it.id];
       if(!l?.placed)continue;
 
-      const cssX=(px(l.x)/100)*targetRect.width;
-      const cssY=(px(l.y)/100)*targetRect.height;
-      const cx=((cssX-visible.left)/visible.width)*naturalWidth;
-      const cy=((cssY-visible.top)/visible.height)*naturalHeight;
-      const iconSize=defaultIconSize*renderScale;
+      const exportGeom={canvasRect:targetRect,visible};
+      const tp=getTemplatePoint(l,exportGeom);
+      const cx=(Number(tp.x)/100)*naturalWidth;
+      const cy=(Number(tp.y)/100)*naturalHeight;
+      const iconSize=defaultIconSize*uiRenderScale;
 
       const charColor=characterTextColor(it,d);
       const comColor=commentTextColor(it,d);
@@ -4961,6 +5185,7 @@ function applyPaneWidth(px){
   const maxLeft=Math.max(220,total-320);
   const width=Math.max(180,Math.min(maxLeft,Number(px)||300));
   ws.style.setProperty('grid-template-columns',`${width}px 12px minmax(0,1fr)`,'important');
+  scheduleTemplateOverlaySync();
 }
 function restorePaneWidth(){
   applyPaneWidth(appState().libraryWidth||300);
@@ -4980,6 +5205,9 @@ function setupSplitter(){
     const cols=getComputedStyle($('#workspace')).gridTemplateColumns.split(' ');
     const width=parseFloat(cols[0])||300;
     mutate(s=>s.libraryWidth=width);
+    syncTemplateOverlayRect();
+    updatePlacedTemplateScale();
+    syncLegacyCoordsFromTemplate();
     window.removeEventListener('pointermove',move);
     window.removeEventListener('pointerup',end);
   };
@@ -5058,6 +5286,7 @@ function restoreDisplay(){
   $('#nameOutlineWidth').value=nameOutlineWidth;$('#nameOutlineWidthValue').textContent=nameOutlineWidth.toFixed(1);
   $('#commentOutlineColor').value=getCommentOutlineColor(d);
   $('#commentOutlineWidth').value=commentOutlineWidth;$('#commentOutlineWidthValue').textContent=commentOutlineWidth.toFixed(1);
+  $('#scaleWithTemplate').checked=d.scaleWithTemplate===true;
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor===false;
   $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
   $('#commentUseCharacterColor').checked=d.commentUseCharacterColor!==false;
@@ -5073,6 +5302,7 @@ function bindDisplay(){
     return {
       iconSize:+$('#iconSize').value,
       nameFontSize:Number($('#nameFontSize').value),
+      scaleWithTemplate:$('#scaleWithTemplate').checked,
       showName:$('#showName').checked,
       showComment:$('#showComment').checked,
       globalTextColor:$('#globalTextColor').value,
@@ -5102,8 +5332,14 @@ function bindDisplay(){
       Save the newly selected display mode FIRST, then redraw.
     */
     const s=appState();
-    s.display=readDisplay();
+    const wasScale=s.display?.scaleWithTemplate===true;
+    const nextDisplay=readDisplay();
+    s.display=nextDisplay;
+    if(changed==='scaleWithTemplate' && nextDisplay.scaleWithTemplate && !wasScale){
+      rebaseTemplateScalingAtCurrentWidth(s);
+    }
     saveState(s);
+    saveCurrentTemplateState(s);
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
     $('#nameFontSizeValue').textContent=$('#nameFontSize').value;
@@ -5123,7 +5359,7 @@ function bindDisplay(){
     }
   };
 
-  ['iconSize','iconShape','nameFontSize','commentFontSize','commentBox','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
+  ['iconSize','iconShape','nameFontSize','commentFontSize','commentBox','scaleWithTemplate','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
     .forEach(id=>{
       const el=$('#'+id);
       el.addEventListener('input',update);
@@ -5191,11 +5427,30 @@ $('#useFavicon').addEventListener('change',syncFaviconDisplayState);
 
 window.addEventListener('beforeunload',()=>saveCurrentTemplateState());
 
+function setupTemplateOverlayTracking(){
+  const canvas=$('#canvas');
+  const template=$('#templateImg');
+  if(!canvas||!template)return;
+  const sync=()=>{
+    syncTemplateOverlayRect();
+    renderPlaced();
+  };
+  template.addEventListener('load',sync);
+  if(typeof ResizeObserver!=='undefined'){
+    const ro=new ResizeObserver(()=>scheduleTemplateOverlaySync());
+    ro.observe(canvas);
+    window._magiaTemplateResizeObserver=ro;
+  }else{
+    window.addEventListener('resize',scheduleTemplateOverlaySync);
+  }
+}
+
 restoreSettings();
 restoreDisplay();
 restorePaneWidth();
 bindDisplay();
 setupSplitter();
+setupTemplateOverlayTracking();
 setupHeaderToggle();
 syncImageFieldWithFavicon();
 setupTemplateDrop();
