@@ -2492,12 +2492,17 @@ button{cursor:pointer}
 
           <div class="group wide">
             <label>アイコンの大きさ</label>
-            <input id="iconSize" type="range" min="36" max="140" step="2" value="72">
+            <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
             <div class="value"><span id="iconSizeValue">72</span> px</div>
           </div>
 
           <div class="group">
             <label class="check"><input id="showName" type="checkbox" checked> 名前を表示</label>
+          </div>
+
+          <div class="group wide">
+            <label>名前の文字サイズ <span id="nameFontSizeValue">13</span>px</label>
+            <input id="nameFontSize" type="range" min="6" max="30" step="1" value="13">
           </div>
 
           <div class="group wide">
@@ -2693,7 +2698,7 @@ let imageBlobUrls=new Map(), imageCacheMeta=new Map(), imageCachePromises=new Ma
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
 function setStatus(t){document.title='Magia Matrix — '+t}
@@ -3792,7 +3797,6 @@ function placeItem(id,x,y){
     l.x=Math.max(2,Math.min(98,x));
     l.y=Math.max(2,Math.min(98,y));
     if(!l.commentPosition)l.commentPosition='top';
-    if(!Number(l.iconSize))l.iconSize=Number(s.display?.iconSize)||72;
     if(!l.crop)l.crop={x:0,y:0,zoom:1};
   });
   const it=items.find(x=>x.id===id);if(it)it.local=appState().items[id];
@@ -4133,6 +4137,7 @@ function renderPlaced(){
       n.className='placed-name';
       n.textContent=it.name||'';
       n.style.fontFamily=getNameFontFamily(d);
+      n.style.fontSize=(Number(d.nameFontSize)||13)+'px';
       el.appendChild(n);
     }
 
@@ -4801,7 +4806,7 @@ async function exportFinalImage(){
     const nameOutline={width:getNameOutlineWidth(d)*renderScale,color:getNameOutlineColor(d)};
     const commentOutline={width:getCommentOutlineWidth(d)*renderScale,color:getCommentOutlineColor(d)};
     const defaultIconSize=px(d.iconSize||72);
-    const nameFontSize=13*renderScale;
+    const nameFontSize=px(d.nameFontSize||13)*renderScale;
     const nameLineHeight=nameFontSize*1.2;
     const commentFontSize=(px(d.commentFontSize||10))*renderScale;
     const commentLineHeight=commentFontSize*1.35;
@@ -4821,7 +4826,7 @@ async function exportFinalImage(){
       const cssY=(px(l.y)/100)*targetRect.height;
       const cx=((cssX-visible.left)/visible.width)*naturalWidth;
       const cy=((cssY-visible.top)/visible.height)*naturalHeight;
-      const iconSize=(px(l.iconSize)||defaultIconSize)*renderScale;
+      const iconSize=defaultIconSize*renderScale;
 
       const charColor=characterTextColor(it,d);
       const comColor=commentTextColor(it,d);
@@ -5048,7 +5053,7 @@ function restoreDisplay(){
   const d=appState().display||{};
   const nameOutlineWidth=getNameOutlineWidth(d);
   const commentOutlineWidth=getCommentOutlineWidth(d);
-  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentBox').value=d.commentBox||'on';
+  $('#iconSize').value=d.iconSize??72;$('#iconSizeValue').textContent=d.iconSize??72;$('#iconShape').value=d.iconShape||'circle';$('#nameFontSize').value=d.nameFontSize??13;$('#nameFontSizeValue').textContent=d.nameFontSize??13;$('#commentFontSize').value=d.commentFontSize??10;$('#commentFontSizeValue').textContent=d.commentFontSize??10;$('#commentBox').value=d.commentBox||'on';
   $('#nameOutlineColor').value=getNameOutlineColor(d);
   $('#nameOutlineWidth').value=nameOutlineWidth;$('#nameOutlineWidthValue').textContent=nameOutlineWidth.toFixed(1);
   $('#commentOutlineColor').value=getCommentOutlineColor(d);
@@ -5067,6 +5072,7 @@ function bindDisplay(){
     const commentOutlineWidth=Number($('#commentOutlineWidth').value);
     return {
       iconSize:+$('#iconSize').value,
+      nameFontSize:Number($('#nameFontSize').value),
       showName:$('#showName').checked,
       showComment:$('#showComment').checked,
       globalTextColor:$('#globalTextColor').value,
@@ -5100,6 +5106,7 @@ function bindDisplay(){
     saveState(s);
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
+    $('#nameFontSizeValue').textContent=$('#nameFontSize').value;
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
     $('#nameOutlineWidthValue').textContent=Number($('#nameOutlineWidth').value).toFixed(1);
     $('#commentOutlineWidthValue').textContent=Number($('#commentOutlineWidth').value).toFixed(1);
@@ -5116,7 +5123,7 @@ function bindDisplay(){
     }
   };
 
-  ['iconSize','iconShape','commentFontSize','commentBox','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
+  ['iconSize','iconShape','nameFontSize','commentFontSize','commentBox','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
     .forEach(id=>{
       const el=$('#'+id);
       el.addEventListener('input',update);
