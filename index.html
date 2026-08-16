@@ -3132,6 +3132,7 @@ button{cursor:pointer}
   #exportImageBtn,#exportIconsBtn,.new-template-btn{height:30px!important}
 }
 
+/* v117: ZIP icon crop parity + name included in square output */
 </style>
 </head>
 <body>
@@ -3482,7 +3483,7 @@ button{cursor:pointer}
         <label><input type="radio" name="iconExportName" value="off" checked><span>なし</span></label>
         <label><input type="radio" name="iconExportName" value="on"><span>あり</span></label>
       </div>
-      <p class="small icon-export-note">「あり」は、指定サイズのアイコンの下に現在の名前設定で名前を付けます。</p>
+      <p class="small icon-export-note">「あり」も、名前まで含めて選んだサイズの正方形PNGになります。</p>
     </div>
 
     <button class="btn primary icon-export-save" id="iconExportSave" type="button">ZIP保存</button>
@@ -5861,10 +5862,17 @@ async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border,borderWidth=2
     : Math.max(size/im.naturalWidth,size/im.naturalHeight);
 
   const zoom=contain?1:Number(crop?.zoom||1);
-  const w=im.naturalWidth*base*zoom;
-  const h=im.naturalHeight*base*zoom;
-  const dx=contain?0:Number(crop?.x||0)/100*size;
-  const dy=contain?0:Number(crop?.y||0)/100*size;
+  const baseW=im.naturalWidth*base;
+  const baseH=im.naturalHeight*base;
+  const w=baseW*zoom;
+  const h=baseH*zoom;
+  /*
+    Match the browser preview exactly:
+    crop x/y are CSS translate percentages of the rendered IMAGE box,
+    not percentages of the square icon frame. This matters for portrait/landscape sources.
+  */
+  const dx=contain?0:Number(crop?.x||0)/100*baseW;
+  const dy=contain?0:Number(crop?.y||0)/100*baseH;
 
   ctx.drawImage(im,cx-w/2+dx,cy-h/2+dy,w,h);
   ctx.restore();
@@ -6879,51 +6887,115 @@ async function renderIconExportBlob(it,iconPx,includeName){
   const src=displayImage(it)||'';
   if(!src)throw new Error('画像がありません');
 
-  const baseIcon=Math.max(1,Number(d.iconSize)||72);
-  const scale=iconPx/baseIcon;
-  const nameSize=Math.max(1,(Number(d.nameFontSize)||13)*scale);
-  const lineHeight=nameSize*1.2;
-  const gap=includeName?Math.max(2,5*scale):0;
-  const padX=includeName?Math.max(4,6*scale):0;
-  const padBottom=includeName?Math.max(3,5*scale):0;
-  const fontFamily=getNameFontFamily(d);
-  const font=`800 ${nameSize}px ${fontFamily}`;
-
-  let lines=[];
-  let textHeight=0;
-  const measure=document.createElement('canvas').getContext('2d');
-  if(includeName&&measure){
-    measure.font=font;
-    lines=exportWrapText(measure,String(it.name||''),Math.max(1,iconPx-padX*2));
-    textHeight=lineHeight*Math.max(1,lines.length);
-  }
-
+  /*
+    iconPx is ALWAYS the final PNG width AND height.
+    When names are enabled, icon + gap + name are fitted inside this same square.
+  */
   const out=document.createElement('canvas');
   out.width=iconPx;
-  out.height=Math.max(1,Math.ceil(iconPx+(includeName?gap+textHeight+padBottom:0)));
+  out.height=iconPx;
   const ctx=out.getContext('2d');
   if(!ctx)throw new Error('Canvasを作成できませんでした');
   ctx.clearRect(0,0,out.width,out.height);
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
 
+  const baseIcon=Math.max(1,Number(d.iconSize)||72);
+  const baseNameSize=Math.max(1,Number(d.nameFontSize)||13);
+  const fontFamily=getNameFontFamily(d);
+  const nameText=String(it.name||'').trim();
+
+  let layoutScale=iconPx/baseIcon;
+  let iconDrawPx=iconPx;
+  let nameSize=baseNameSize*layoutScale;
+  let lineHeight=nameSize*1.2;
+  let gap=0;
+  let padX=0;
+  let padBottom=0;
+  let lines=[];
+  let textHeight=0;
+  let layoutHeight=iconPx;
+
+  if(includeName && nameText){
+    /*
+      Fit the CURRENT icon/name proportions into one square. Binary search keeps
+      long names inside the chosen 128/256/512/custom final dimensions too.
+    */
+    const measure=document.createElement('canvas').getContext('2d');
+    const fitsAt=scale=>{
+      const iconSize=baseIcon*scale;
+      const fontSize=baseNameSize*scale;
+      const lh=fontSize*1.2;
+      const g=Math.max(1,5*scale);
+      const pxPad=Math.max(2,6*scale);
+      const bottom=Math.max(1,5*scale);
+      const font=`800 ${fontSize}px ${fontFamily}`;
+      let wrapped=[nameText];
+      if(measure){
+        measure.font=font;
+        wrapped=exportWrapText(measure,nameText,Math.max(1,iconPx-pxPad*2));
+      }
+      const th=lh*Math.max(1,wrapped.length);
+      return {scale,iconSize,fontSize,lh,g,pxPad,bottom,wrapped,th,total:iconSize+g+th+bottom,font};
+    };
+
+    let lo=0.01;
+    let hi=Math.max(0.01,iconPx/baseIcon);
+    let best=fitsAt(lo);
+    for(let i=0;i<28;i++){
+      const mid=(lo+hi)/2;
+      const trial=fitsAt(mid);
+      if(trial.total<=iconPx){best=trial;lo=mid}else hi=mid;
+    }
+
+    layoutScale=best.scale;
+    iconDrawPx=best.iconSize;
+    nameSize=best.fontSize;
+    lineHeight=best.lh;
+    gap=best.g;
+    padX=best.pxPad;
+    padBottom=best.bottom;
+    lines=best.wrapped;
+    textHeight=best.th;
+    layoutHeight=best.total;
+  }
+
+  const topOffset=Math.max(0,(iconPx-layoutHeight)/2);
+  const iconCenterX=iconPx/2;
+  const iconCenterY=topOffset+iconDrawPx/2;
+
   const shape=d.iconShape||currentIconShape();
   const borderColor=d.iconBorderUseTextColor?(safeColor(it.color)||'#ffffff'):'#ffffff';
-  const borderWidth=iconBorderWidth(d)*scale;
+  const borderWidth=iconBorderWidth(d)*layoutScale;
   const background=iconBackgroundFor(it,d);
-  await exportDrawIcon(ctx,src,l.crop,iconPx/2,iconPx/2,iconPx,shape,borderColor,borderWidth,background);
+  await exportDrawIcon(
+    ctx,
+    src,
+    l.crop,
+    iconCenterX,
+    iconCenterY,
+    iconDrawPx,
+    shape,
+    borderColor,
+    borderWidth,
+    background
+  );
 
-  if(includeName&&String(it.name||'').trim()){
+  if(includeName && nameText){
     const color=characterTextColor(it,d);
-    const outlineWidth=getNameOutlineWidth(d)*scale;
+    const outlineWidth=getNameOutlineWidth(d)*layoutScale;
     const outlineColor=getNameOutlineColor(d);
+    const font=`800 ${nameSize}px ${fontFamily}`;
+    const centerY=topOffset+iconDrawPx+gap+textHeight/2;
+
     ctx.save();
     ctx.font=font;
     ctx.textAlign='center';
     ctx.textBaseline='middle';
     ctx.lineJoin='round';
     ctx.lineCap='round';
-    const centerY=iconPx+gap+textHeight/2;
+
+    /* Draw every outline first, then every fill, so thick outlines stay behind all text. */
     if(outlineWidth>0.01){
       ctx.lineWidth=outlineWidth;
       ctx.strokeStyle=outlineColor;
