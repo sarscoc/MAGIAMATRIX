@@ -2934,6 +2934,122 @@ button{cursor:pointer}
   .connect-grid{grid-template-columns:1fr 1fr!important}
   #settings .display-settings-body{gap:0 8px!important;padding-left:8px!important;padding-right:8px!important}
 }
+
+
+/* v113: smartphone-only compact settings, 5-column icon list, and safe template-first selection. */
+@media (max-width:760px){
+  /* Five compact icon columns on the icon-selection screen. */
+  #iconsPage .icon-list{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:4px!important;
+    padding:5px 5px 78px!important;
+  }
+  #iconsPage .source-card{
+    min-height:74px!important;
+    padding:5px 2px!important;
+    border-radius:9px!important;
+  }
+  #iconsPage .source-avatar{
+    width:48px!important;
+    height:48px!important;
+  }
+  #iconsPage .source-name{
+    margin-top:3px!important;
+    font-size:8.5px!important;
+    line-height:1.1!important;
+  }
+  #iconsPage .source-card.mobile-selected::after{
+    right:2px!important;
+    top:2px!important;
+    width:15px!important;
+    height:15px!important;
+    font-size:9px!important;
+  }
+  #iconsPage .source-card.mobile-disabled{
+    opacity:.34!important;
+    filter:grayscale(.35)!important;
+    cursor:default!important;
+    pointer-events:none!important;
+    box-shadow:none!important;
+  }
+  .mobile-icon-help{
+    margin:0 5px 4px!important;
+    padding:5px 7px!important;
+    font-size:8.5px!important;
+  }
+
+  /* Mobile template picker speaks in touch/mobile language, not desktop D&D language. */
+  #templateDrop strong{font-size:0!important}
+  #templateDrop strong::after{
+    content:'カメラロールから画像選択';
+    font-size:13px!important;
+    font-weight:800;
+    color:#7f878d;
+  }
+  #templateDrop .small{font-size:0!important}
+  #templateDrop .small::after{
+    content:'タップしてテンプレ画像を選択';
+    font-size:9px!important;
+    color:#9aa1a7;
+  }
+
+  /* Settings layout: icon section across the full first row; Name / Comment side-by-side below. */
+  #settings .display-settings-body{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:0 10px!important;
+    padding:0 9px 9px!important;
+  }
+  #settings .settings-icon-section{
+    grid-column:1/-1!important;
+    padding:8px 1px 7px!important;
+  }
+  #settings #nameSettingsSection,
+  #settings #commentSettingsSection{
+    grid-column:auto!important;
+    padding:4px 1px 7px!important;
+    min-width:0!important;
+  }
+  #settings #nameSettingsSection{border-right:1px solid #eef1f3!important;padding-right:8px!important}
+  #settings #commentSettingsSection{padding-left:0!important}
+  #settings .settings-panel-title{
+    margin:0 0 6px!important;
+    font-size:9px!important;
+  }
+  #settings .settings-accordion-head{
+    min-height:30px!important;
+  }
+  #settings .settings-section-toggle{
+    font-size:9px!important;
+    gap:5px!important;
+    white-space:nowrap!important;
+  }
+  #settings .settings-section-toggle span::after{margin-left:4px!important}
+  #settings .settings-accordion-content{
+    padding:1px 0 1px 0!important;
+  }
+  #settings .settings-row{margin-bottom:7px!important}
+  #settings .settings-check-row{
+    padding:2px 0 7px!important;
+    font-size:8px!important;
+  }
+  #settings select{height:28px!important;font-size:8.5px!important;padding:0 6px!important}
+  #settings .settings-label-line label,
+  #settings .settings-row>label,
+  #settings .settings-color-row>label{font-size:8px!important}
+  #settings .settings-value{font-size:7.5px!important}
+}
+
+/* Keep the compact Name / Comment two-column pairing even on wider phones. */
+@media (min-width:560px) and (max-width:760px){
+  #settings .display-settings-body{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #iconsPage .icon-list{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -4289,6 +4405,7 @@ function isMobileItemSelected(local){
   return !!(local?.placed || local?.mobileSelected===true);
 }
 function toggleMobileItemSelection(id){
+  if(isMobileLayout()&&!templateSpaceReady())return;
   const state=appState();
   const local=state.items?.[id]||(state.items[id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'});
   const selected=isMobileItemSelected(local);
@@ -4307,6 +4424,7 @@ function toggleMobileItemSelection(id){
 }
 function startMobileLibraryInteraction(e,it,card){
   if(e.button!=null&&e.button!==0)return;
+  if(!templateSpaceReady())return;
   const startX=e.clientX,startY=e.clientY;
   let longPressed=false,cancelled=false;
   const LONG_PRESS=540;
@@ -4568,6 +4686,7 @@ function setupMobileUI(){
       picker.value='';
       scheduleTemplateOverlaySync();
       renderPlaced();
+      renderLibrary();
     }
   });
   document.addEventListener('contextmenu',e=>{
@@ -4581,6 +4700,13 @@ function renderLibrary(){
   const list=$('#iconList');
   list.replaceChildren();
   $('#libraryCount').textContent=items.length+'件';
+  const mobileSelectionLocked=isMobileLayout()&&!templateSpaceReady();
+  const mobileHelp=document.querySelector('.mobile-icon-help');
+  if(mobileHelp&&isMobileLayout()){
+    mobileHelp.textContent=mobileSelectionLocked
+      ? '先に「配置」でテンプレ画像を選択してください'
+      : 'タップでON / OFF　・　長押しで切り抜き調整';
+  }
 
   if(!items.length){
     list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';
@@ -4598,6 +4724,8 @@ function renderLibrary(){
     card.dataset.id=it.id;
     card.draggable=false;
     card.classList.toggle('mobile-selected',isMobileItemSelected(l));
+    card.classList.toggle('mobile-disabled',mobileSelectionLocked);
+    if(mobileSelectionLocked)card.setAttribute('aria-disabled','true');
 
     card.addEventListener('pointerdown',e=>{
       if(isMobileLayout())startMobileLibraryInteraction(e,it,card);
@@ -6440,6 +6568,7 @@ function setupTemplateOverlayTracking(){
   const sync=()=>{
     syncTemplateOverlayRect();
     renderPlaced();
+    if(isMobileLayout())renderLibrary();
   };
   template.addEventListener('load',sync);
   if(typeof ResizeObserver!=='undefined'){
