@@ -3050,6 +3050,52 @@ button{cursor:pointer}
   }
 }
 
+
+
+/* v115: background selector */
+#iconBackgroundColorRow input[type="color"]{
+  width:100%!important;
+  height:30px!important;
+  padding:2px!important;
+  border:1px solid #e1e4e6!important;
+  border-radius:6px!important;
+  background:#fff!important;
+}
+
+/* v114: crop inheritance + transparent crop space + configurable icon frame */
+.source-avatar.mode-circle,.placed-avatar.mode-circle,.drag-ghost.mode-circle,.mobile-tray-avatar.mode-circle,
+.source-avatar.mode-square,.placed-avatar.mode-square,.drag-ghost.mode-square,.mobile-tray-avatar.mode-square,
+.source-avatar.mode-sharp,.placed-avatar.mode-sharp,.drag-ghost.mode-sharp,.mobile-tray-avatar.mode-sharp{
+  box-sizing:border-box!important;
+  border-style:solid!important;
+  border-width:var(--icon-border-width,2px)!important;
+  border-color:var(--icon-border-color,#fff)!important;
+  background:var(--icon-background-color,transparent)!important;
+}
+.source-avatar.mode-sharp,.placed-avatar.mode-sharp,.drag-ghost.mode-sharp,.preview.mode-sharp,.mobile-tray-avatar.mode-sharp{
+  border-radius:0!important;
+  overflow:hidden!important;
+}
+.left-crop-stage .crop-circle.mode-sharp{border-radius:0!important}
+.left-crop-stage .crop-circle.mode-circle{border-radius:50%!important}
+.left-crop-stage .crop-circle.mode-square{border-radius:18%!important}
+.source-avatar.mode-original,.placed-avatar.mode-original,.drag-ghost.mode-original,.mobile-tray-avatar.mode-original{
+  border-width:0!important;
+  background:transparent!important;
+}
+/* A checkerboard makes newly exposed transparent crop space understandable while editing. */
+.left-crop-stage{
+  background-color:#f7f7f7!important;
+  background-image:
+    linear-gradient(45deg,#e9ecee 25%,transparent 25%),
+    linear-gradient(-45deg,#e9ecee 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#e9ecee 75%),
+    linear-gradient(-45deg,transparent 75%,#e9ecee 75%)!important;
+  background-size:16px 16px!important;
+  background-position:0 0,0 8px,8px -8px,-8px 0!important;
+}
+#iconCropOptions[hidden]{display:none!important}
+
 </style>
 </head>
 <body>
@@ -3210,19 +3256,38 @@ button{cursor:pointer}
             <section class="settings-panel-section settings-icon-section">
               <div class="settings-panel-title">アイコン</div>
 
+              <div class="settings-row">
+                <div class="settings-label-line"><label>アイコンの大きさ</label><span class="settings-value"><span id="iconSizeValue">72</span> px</span></div>
+                <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
+              </div>
+
               <div class="settings-row settings-icon-shape-row">
                 <select id="iconShape" aria-label="アイコン表示方法">
                   <option value="original">アイコン切らずに表示</option>
                   <option value="circle">丸に切り抜き</option>
                   <option value="square">角丸四角に切り抜き</option>
+                  <option value="sharp">四角に切り抜き</option>
                 </select>
               </div>
 
-              <label class="settings-check-row" id="iconBorderColorRow"><input id="iconBorderUseTextColor" type="checkbox"><span>枠色にNotionプロパティの文字色を使う</span></label>
-
-              <div class="settings-row">
-                <div class="settings-label-line"><label>アイコンの大きさ</label><span class="settings-value"><span id="iconSizeValue">72</span> px</span></div>
-                <input id="iconSize" type="range" min="5" max="140" step="1" value="72">
+              <div id="iconCropOptions">
+                <label class="settings-check-row" id="iconBorderColorRow"><input id="iconBorderUseTextColor" type="checkbox"><span>枠色にNotionプロパティの文字色を使う</span></label>
+                <div class="settings-row">
+                  <div class="settings-label-line"><label>枠の太さ</label><span class="settings-value"><span id="iconBorderWidthValue">2</span> px</span></div>
+                  <input id="iconBorderWidth" type="range" min="0" max="10" step="0.5" value="2">
+                </div>
+                <div class="settings-row">
+                  <div class="settings-label-line"><label for="iconBackgroundMode">背景</label></div>
+                  <select id="iconBackgroundMode">
+                    <option value="transparent">透明</option>
+                    <option value="custom">色を選択</option>
+                    <option value="notion">Notionプロパティの文字色</option>
+                  </select>
+                </div>
+                <div class="settings-row" id="iconBackgroundColorRow" hidden>
+                  <div class="settings-label-line"><label for="iconBackgroundColor">背景色</label></div>
+                  <input id="iconBackgroundColor" type="color" value="#ffffff">
+                </div>
               </div>
             </section>
 
@@ -3459,9 +3524,33 @@ let imageBlobUrls=new Map(), imageCacheMeta=new Map(), imageCachePromises=new Ma
 
 function loadJSON(k,fb){try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}}
 function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
-function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,scaleWithTemplate:true,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
+function appState(){return loadJSON(STATE,{items:{},display:{iconSize:72,nameFontSize:13,scaleWithTemplate:true,showName:true,showComment:true,globalTextColor:'#202327',useIndividualTextColor:true,commentUseCharacterColor:true,commentTextColor:'#202327',useFavicon:false,iconShape:'circle',iconBorderWidth:2,iconBackgroundMode:'transparent',iconBackgroundColor:'#FFFFFF',iconBackgroundUseTextColor:false,commentFontSize:10,commentPosition:'top',commentBox:'on',textOutline:'off',nameOutlineColor:'#FFFFFF',nameOutlineWidth:0,commentOutlineColor:'#FFFFFF',commentOutlineWidth:0,iconBorderUseTextColor:false,nameFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",commentFontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",fontFamily:"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}})}
 function saveState(s){saveJSON(STATE,s)}
 function mutate(fn){const s=appState();fn(s);saveState(s);saveCurrentTemplateState(s)}
+const ICON_CROPS='magiaMatrix.iconCrops.v1';
+function iconCropMap(){return loadJSON(ICON_CROPS,{})||{}}
+function globalCropForId(id){
+  const c=iconCropMap()[id];
+  return normalizedCrop(c||{x:0,y:0,zoom:1});
+}
+function saveGlobalCrop(id,crop){
+  if(!id)return;
+  const all=iconCropMap();
+  all[id]=normalizedCrop(crop);
+  saveJSON(ICON_CROPS,all);
+}
+function seedGlobalCropsFromState(state){
+  const all=iconCropMap();
+  let changed=false;
+  Object.entries(state?.items||{}).forEach(([id,local])=>{
+    /* Migration only: never let an old template's crop overwrite the character-wide saved crop. */
+    if(local?.crop && !all[id]){all[id]=normalizedCrop(local.crop);changed=true}
+  });
+  if(changed)saveJSON(ICON_CROPS,all);
+}
+function makeLocalItemState(id){
+  return {placed:false,x:50,y:50,comment:'',commentPosition:null,crop:globalCropForId(id),useColor:false,color:'#202327'};
+}
 function setStatus(t){document.title='Magia Matrix — '+t}
 function safeColor(v){
   const text=String(v||'').replace(/＃/g,'#');
@@ -3756,7 +3845,7 @@ function restoreLoadedCache(){
 
   items=c.items.map(it=>{
     if(!s.items[it.id]){
-      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      s.items[it.id]=makeLocalItemState(it.id);
     }
     return {...it,local:s.items[it.id]};
   });
@@ -3845,7 +3934,7 @@ async function loadNotion(){
     const s=appState();s.items||={};
     items=(j.results||[]).map(page=>{
       const v=normalize(page,cfg);
-      if(!s.items[v.id])s.items[v.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      if(!s.items[v.id])s.items[v.id]=makeLocalItemState(v.id);
       v.local=s.items[v.id];
       return v;
     });
@@ -3950,7 +4039,7 @@ function restoreTemplatePlacementState(tid){
   // ensure every loaded item has a local record
   items.forEach(it=>{
     if(!s.items[it.id]){
-      s.items[it.id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+      s.items[it.id]=makeLocalItemState(it.id);
     }
     it.local=s.items[it.id];
   });
@@ -3990,8 +4079,10 @@ function makeTemplateName(){
   return `テンプレ ${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 async function createNewTemplate(){
-  // Save the old editing page first.
-  saveCurrentTemplateState();
+  // Save the old editing page first, and promote its crop settings to character-wide defaults.
+  const previousState=appState();
+  seedGlobalCropsFromState(previousState);
+  saveCurrentTemplateState(previousState);
 
   const id=makeTemplateId();
   const rec={
@@ -4004,7 +4095,7 @@ async function createNewTemplate(){
   await tplSetRecord(id,rec);
   localStorage.setItem(TEMPLATE_CURRENT,id);
 
-  // Brand-new template starts with no placed icons, comments or crop edits.
+  // Brand-new template starts with no placement/comments, but inherits each character's saved crop.
   const s=appState();
   s.items={};
   saveState(s);
@@ -4014,7 +4105,7 @@ async function createNewTemplate(){
   setTemplateStates(all);
 
   items.forEach(it=>{
-    const local={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+    const local=makeLocalItemState(it.id);
     s.items[it.id]=local;
     it.local=local;
   });
@@ -4097,7 +4188,7 @@ async function deleteSavedTemplate(id){
   const rec=await tplGetRecord(id);
   const name=rec?.name||'このテンプレ';
 
-  if(!window.confirm(`「${name}」を削除しますか？\n配置・コメント・切り抜き・個別色も一緒に削除されます。`))return;
+  if(!window.confirm(`「${name}」を削除しますか？\n配置・コメントなど、このテンプレ固有の情報も一緒に削除されます。切り抜きの共通保存は残ります。`))return;
 
   const wasCurrent=id===currentTemplateId();
 
@@ -4121,7 +4212,7 @@ async function deleteSavedTemplate(id){
       const s=appState();
       s.items={};
       items.forEach(it=>{
-        const local={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'};
+        const local=makeLocalItemState(it.id);
         s.items[it.id]=local;
         it.local=local;
       });
@@ -4322,8 +4413,36 @@ function currentIconShape(){
 }
 function applyShapeClass(el,shape=currentIconShape()){
   if(!el)return;
-  el.classList.remove('mode-original','mode-circle','mode-square');
+  el.classList.remove('mode-original','mode-circle','mode-square','mode-sharp');
   el.classList.add('mode-'+shape);
+}
+function iconBorderWidth(d=appState().display||{}){
+  const n=Number(d?.iconBorderWidth);
+  return Number.isFinite(n)?Math.max(0,n):2;
+}
+function iconBackgroundMode(d=appState().display||{}){
+  if(['transparent','custom','notion'].includes(d?.iconBackgroundMode))return d.iconBackgroundMode;
+  return d?.iconBackgroundUseTextColor?'notion':'transparent';
+}
+function iconBackgroundColorValue(d=appState().display||{}){
+  return safeColor(d?.iconBackgroundColor)||'#FFFFFF';
+}
+function iconBackgroundFor(it,d=appState().display||{}){
+  const mode=iconBackgroundMode(d);
+  if(mode==='notion')return safeColor(it?.color)||'transparent';
+  if(mode==='custom')return iconBackgroundColorValue(d);
+  return 'transparent';
+}
+function applyIconFrameStyle(el,it,d=appState().display||{}){
+  if(!el)return;
+  const shape=d.iconShape||currentIconShape();
+  const cropped=shape!=='original';
+  const borderColor=d.iconBorderUseTextColor ? (safeColor(it?.color)||'#ffffff') : '#ffffff';
+  const backgroundColor=cropped?iconBackgroundFor(it,d):'transparent';
+  el.style.setProperty('--icon-border-width',(cropped?iconBorderWidth(d):0)+'px');
+  el.style.setProperty('--icon-border-color',borderColor);
+  el.style.setProperty('--icon-background-color',backgroundColor);
+  el.classList.toggle('use-text-border',cropped&&!!d.iconBorderUseTextColor);
 }
 
 
@@ -4362,10 +4481,12 @@ function closeLeftCropEditor(){$('#leftCropEditor').hidden=true;leftCropSelected
 function saveLeftCrop(){
   if(!leftCropSelectedId)return;
   const id=leftCropSelectedId;
+  const savedCrop=normalizedCrop(leftCropWork);
   mutate(s=>{
     const l=s.items[id]||(s.items[id]={});
-    l.crop={...leftCropWork};
+    l.crop={...savedCrop};
   });
+  saveGlobalCrop(id,savedCrop);
   const it=items.find(x=>x.id===id);
   if(it)it.local=appState().items[id];
   refreshSourceCropPreview(id);
@@ -4378,7 +4499,7 @@ function setupLeftCrop(){
   zoom.addEventListener('input',()=>setZoom(zoom.value));
   stage.addEventListener('wheel',e=>{if(!leftCropSelectedId)return;e.preventDefault();setZoom(Number(leftCropWork.zoom||1)*(e.deltaY<0?1.10:.90))},{passive:false});
   let moving=false,startX=0,startY=0,startCropX=0,startCropY=0;
-  const move=e=>{if(!moving)return;const r=stage.getBoundingClientRect();leftCropWork.x=Math.max(-120,Math.min(120,startCropX+(e.clientX-startX)/Math.max(1,r.width)*100));leftCropWork.y=Math.max(-120,Math.min(120,startCropY+(e.clientY-startY)/Math.max(1,r.height)*100));updateLeftCropPreview()};
+  const move=e=>{if(!moving)return;const r=stage.getBoundingClientRect();leftCropWork.x=Math.max(-300,Math.min(300,startCropX+(e.clientX-startX)/Math.max(1,r.width)*100));leftCropWork.y=Math.max(-300,Math.min(300,startCropY+(e.clientY-startY)/Math.max(1,r.height)*100));updateLeftCropPreview()};
   const end=()=>{moving=false;stage.classList.remove('dragging');window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end)};
   stage.addEventListener('pointerdown',e=>{if(!leftCropSelectedId)return;if(e.button!=null&&e.button!==0)return;e.preventDefault();moving=true;startX=e.clientX;startY=e.clientY;startCropX=Number(leftCropWork.x||0);startCropY=Number(leftCropWork.y||0);stage.classList.add('dragging');window.addEventListener('pointermove',move,{passive:true});window.addEventListener('pointerup',end,{once:true});window.addEventListener('pointercancel',end,{once:true})});
   $('#leftCropImg').addEventListener('dragstart',e=>e.preventDefault());
@@ -4407,7 +4528,7 @@ function isMobileItemSelected(local){
 function toggleMobileItemSelection(id){
   if(isMobileLayout()&&!templateSpaceReady())return;
   const state=appState();
-  const local=state.items?.[id]||(state.items[id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'});
+  const local=state.items?.[id]||(state.items[id]=makeLocalItemState(id));
   const selected=isMobileItemSelected(local);
   if(selected){
     local.mobileSelected=false;
@@ -4486,10 +4607,7 @@ function renderMobilePlacementTray(){
     const av=document.createElement('div');
     av.className='mobile-tray-avatar';
     applyShapeClass(av);
-    if(display.iconBorderUseTextColor){
-      av.classList.add('use-text-border');
-      av.style.setProperty('--icon-border-color',safeColor(it.color)||'#ffffff');
-    }
+    applyIconFrameStyle(av,it,display);
     const img=document.createElement('img');
     img.draggable=false;
     img.src=displayImage(it)||'';
@@ -4736,11 +4854,7 @@ function renderLibrary(){
     av.className='source-avatar';
     applyShapeClass(av);
 
-    if(display.iconBorderUseTextColor){
-      const sourceChosen=safeColor(it.color)||'#ffffff';
-      av.classList.add('use-text-border');
-      av.style.setProperty('--icon-border-color',sourceChosen);
-    }
+    applyIconFrameStyle(av,it,display);
 
     const im=document.createElement('img');
     im.draggable=false;
@@ -4789,6 +4903,7 @@ function startLibraryDrag(e,it,card){
 
   if(!sourceAvatar){
     applyShapeClass(ghost);
+    applyIconFrameStyle(ghost,it,appState().display||{});
     const gi=document.createElement('img');
     gi.draggable=false;
     gi.src=displayImage(it)||'';
@@ -4979,12 +5094,12 @@ function syncLeftCropGuide(){
   if(!guide)return;
   const shape=currentIconShape();
 
-  guide.classList.remove('mode-circle','mode-square');
+  guide.classList.remove('mode-circle','mode-square','mode-sharp');
   if(shape==='original'){
     guide.style.display='none';
   }else{
     guide.style.display='block';
-    guide.classList.add(shape==='square'?'mode-square':'mode-circle');
+    guide.classList.add(shape==='square'?'mode-square':shape==='sharp'?'mode-sharp':'mode-circle');
   }
 }
 
@@ -5425,10 +5540,7 @@ function renderPlaced(){
     av.className='placed-avatar';
     applyShapeClass(av);
 
-    if(d.iconBorderUseTextColor){
-      av.classList.add('use-text-border');
-      av.style.setProperty('--icon-border-color',safeColor(it.color)||'#ffffff');
-    }
+    applyIconFrameStyle(av,it,d);
 
     const im=document.createElement('img');
     im.draggable=false;
@@ -5647,19 +5759,27 @@ function exportText(ctx,text,x,y,color,outline,font){
   ctx.fillText(text,x,y);
   ctx.restore();
 }
-async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
+async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border,borderWidth=2,background='transparent'){
   const im=await exportLoadImage(src);
   ctx.save();
 
   const radius=size*.18;
+  const cropped=shape!=='original';
 
-  if(shape==='circle'){
+  if(cropped){
     ctx.beginPath();
-    ctx.arc(cx,cy,size/2,0,Math.PI*2);
+    if(shape==='circle'){
+      ctx.arc(cx,cy,size/2,0,Math.PI*2);
+    }else if(shape==='square'){
+      exportRoundedRect(ctx,cx-size/2,cy-size/2,size,size,radius);
+    }else{
+      ctx.rect(cx-size/2,cy-size/2,size,size);
+    }
     ctx.clip();
-  }else if(shape==='square'){
-    exportRoundedRect(ctx,cx-size/2,cy-size/2,size,size,radius);
-    ctx.clip();
+    if(background && background!=='transparent'){
+      ctx.fillStyle=background;
+      ctx.fillRect(cx-size/2,cy-size/2,size,size);
+    }
   }
 
   const contain=shape==='original';
@@ -5676,26 +5796,34 @@ async function exportDrawIcon(ctx,src,crop,cx,cy,size,shape,border){
   ctx.drawImage(im,cx-w/2+dx,cy-h/2+dy,w,h);
   ctx.restore();
 
-  if(shape!=='original'){
+  const lineWidth=Math.max(0,Number(borderWidth)||0);
+  if(cropped && lineWidth>0.01){
     ctx.save();
-    ctx.lineWidth=Math.max(2,size*.035);
+    ctx.lineWidth=lineWidth;
     ctx.strokeStyle=border||'#fff';
 
+    const inset=lineWidth/2;
     if(shape==='circle'){
       ctx.beginPath();
-      ctx.arc(cx,cy,size/2-ctx.lineWidth/2,0,Math.PI*2);
+      ctx.arc(cx,cy,Math.max(0,size/2-inset),0,Math.PI*2);
       ctx.stroke();
-    }else{
-      const inset=ctx.lineWidth/2;
+    }else if(shape==='square'){
       exportRoundedRect(
         ctx,
         cx-size/2+inset,
         cy-size/2+inset,
-        size-ctx.lineWidth,
-        size-ctx.lineWidth,
+        Math.max(0,size-lineWidth),
+        Math.max(0,size-lineWidth),
         Math.max(0,radius-inset)
       );
       ctx.stroke();
+    }else{
+      ctx.strokeRect(
+        cx-size/2+inset,
+        cy-size/2+inset,
+        Math.max(0,size-lineWidth),
+        Math.max(0,size-lineWidth)
+      );
     }
     ctx.restore();
   }
@@ -6165,11 +6293,13 @@ async function exportFinalImage(){
       const charColor=characterTextColor(it,d);
       const comColor=commentTextColor(it,d);
       const borderColor=d.iconBorderUseTextColor ? (safeColor(it.color)||'#ffffff') : '#ffffff';
+      const borderWidth=iconBorderWidth(d)*uiRenderScale;
+      const backgroundColor=iconBackgroundFor(it,d);
       const src=displayImage(it)||'';
 
       if(src){
         try{
-          await exportDrawIcon(ctx,src,l.crop,cx,cy,iconSize,shape,borderColor);
+          await exportDrawIcon(ctx,src,l.crop,cx,cy,iconSize,shape,borderColor,borderWidth,backgroundColor);
         }catch(err){
           console.warn('icon export skipped:',it?.name||it?.id,err);
         }
@@ -6389,10 +6519,13 @@ function toggleDisplayPanel(force){
 }
 
 function syncIconBorderColorControl(){
-  const row=$('#iconBorderColorRow');
+  const options=$('#iconCropOptions');
   const shape=$('#iconShape');
-  if(!row||!shape)return;
-  row.hidden=shape.value==='original';
+  const backgroundMode=$('#iconBackgroundMode');
+  const backgroundColorRow=$('#iconBackgroundColorRow');
+  if(!shape)return;
+  if(options)options.hidden=shape.value==='original';
+  if(backgroundColorRow)backgroundColorRow.hidden=!backgroundMode||backgroundMode.value!=='custom';
 }
 
 function restoreDisplay(){
@@ -6406,7 +6539,7 @@ function restoreDisplay(){
   $('#commentOutlineWidth').value=commentOutlineWidth;$('#commentOutlineWidthValue').textContent=commentOutlineWidth.toFixed(1);
   $('#scaleWithTemplate').checked=d.scaleWithTemplate!==false;
   $('#showName').checked=d.showName!==false;$('#showComment').checked=d.showComment!==false;$('#useIndividualTextColor').checked=d.useIndividualTextColor!==false;
-  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;
+  $('#globalTextColor').value=d.globalTextColor||'#202327';$('#iconBorderUseTextColor').checked=!!d.iconBorderUseTextColor;$('#iconBorderWidth').value=iconBorderWidth(d);$('#iconBorderWidthValue').textContent=iconBorderWidth(d);$('#iconBackgroundMode').value=iconBackgroundMode(d);$('#iconBackgroundColor').value=iconBackgroundColorValue(d);
   $('#commentUseCharacterColor').checked=d.commentUseCharacterColor!==false;
   $('#commentTextColor').value=safeColor(d.commentTextColor)||'#202327';
   $('#nameFontFamily').value=getNameFontFamily(d);
@@ -6431,6 +6564,10 @@ function bindDisplay(){
       commentUseCharacterColor:$('#commentUseCharacterColor').checked,
       commentTextColor:$('#commentTextColor').value,
       iconBorderUseTextColor:$('#iconBorderUseTextColor').checked,
+      iconBorderWidth:Number($('#iconBorderWidth').value),
+      iconBackgroundMode:$('#iconBackgroundMode').value,
+      iconBackgroundColor:$('#iconBackgroundColor').value,
+      iconBackgroundUseTextColor:$('#iconBackgroundMode').value==='notion',
       iconShape:$('#iconShape').value,
       commentFontSize:Number($('#commentFontSize').value),
       commentBox:$('#commentBox').value,
@@ -6463,6 +6600,7 @@ function bindDisplay(){
     saveCurrentTemplateState(s);
 
     $('#iconSizeValue').textContent=$('#iconSize').value;
+    $('#iconBorderWidthValue').textContent=Number($('#iconBorderWidth').value).toFixed(1).replace(/\.0$/,'');
     $('#nameFontSizeValue').textContent=$('#nameFontSize').value;
     $('#commentFontSizeValue').textContent=$('#commentFontSize').value;
     $('#nameOutlineWidthValue').textContent=Number($('#nameOutlineWidth').value).toFixed(1);
@@ -6474,7 +6612,7 @@ function bindDisplay(){
 
     renderPlaced();
 
-    if(['iconShape','iconBorderUseTextColor','globalTextColor','useIndividualTextColor'].includes(changed)){
+    if(['iconShape','iconBorderUseTextColor','iconBorderWidth','iconBackgroundMode','iconBackgroundColor','globalTextColor','useIndividualTextColor'].includes(changed)){
       renderLibrary();
     }
 
@@ -6483,7 +6621,7 @@ function bindDisplay(){
     }
   };
 
-  ['iconSize','iconShape','nameFontSize','commentFontSize','commentBox','scaleWithTemplate','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
+  ['iconSize','iconShape','iconBorderWidth','iconBackgroundMode','iconBackgroundColor','nameFontSize','commentFontSize','commentBox','scaleWithTemplate','showName','showComment','globalTextColor','useIndividualTextColor','commentUseCharacterColor','commentTextColor','iconBorderUseTextColor','nameOutlineColor','nameOutlineWidth','commentOutlineColor','commentOutlineWidth','nameFontFamily','commentFontFamily']
     .forEach(id=>{
       const el=$('#'+id);
       el.addEventListener('input',update);
