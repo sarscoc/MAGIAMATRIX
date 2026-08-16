@@ -2484,6 +2484,306 @@ button{cursor:pointer}
   box-shadow:none!important;
 }
 
+
+
+/* v111: smartphone-only UI. Desktop rules and interactions remain authoritative above. */
+.mobile-bottom-nav,
+.mobile-icon-help,
+.mobile-placement-tray,
+.mobile-comment-sheet,
+#mobileTemplateFileInput{display:none}
+
+@media (max-width:760px){
+  html,body{overscroll-behavior:none}
+  body{-webkit-tap-highlight-color:transparent}
+  .app{padding-bottom:58px!important}
+
+  /* Smartphone = two completely separate work screens. */
+  .workspace{
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .splitter{display:none!important}
+  body.mobile-view-icons #libraryPane{display:flex!important;grid-column:1!important}
+  body.mobile-view-icons .stage-shell{display:none!important}
+  body.mobile-view-stage #libraryPane{display:none!important}
+  body.mobile-view-stage .stage-shell{
+    display:flex!important;
+    grid-column:1!important;
+    width:100%!important;
+    padding:6px!important;
+  }
+
+  .library{
+    width:100%!important;
+    max-height:none!important;
+    height:100%!important;
+    border:0!important;
+  }
+  #iconsPage .icon-list{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:8px!important;
+    padding:7px 8px 84px!important;
+    overscroll-behavior:contain;
+  }
+  .source-card{
+    position:relative!important;
+    min-height:92px;
+    padding:8px 4px!important;
+    cursor:pointer!important;
+    touch-action:pan-y!important;
+    -webkit-touch-callout:none;
+    transition:border-color .12s ease,background .12s ease,box-shadow .12s ease!important;
+  }
+  .source-card:hover{transform:none!important;box-shadow:none!important}
+  .source-card.mobile-selected{
+    border:2px solid var(--accent)!important;
+    background:#f4f9fc!important;
+    box-shadow:inset 0 0 0 1px rgba(132,181,211,.12)!important;
+  }
+  .source-card.mobile-selected::after{
+    content:'✓';
+    position:absolute;
+    right:5px;
+    top:4px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:var(--accent);
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    line-height:1;
+  }
+  .source-avatar{width:60px!important;height:60px!important}
+  .source-name{font-size:10px!important;margin-top:5px!important}
+  .mobile-icon-help{
+    display:block;
+    flex:0 0 auto;
+    margin:0 8px 5px;
+    padding:7px 9px;
+    border-radius:8px;
+    background:#f6f7f8;
+    color:#747c82;
+    font-size:9px;
+    line-height:1.45;
+  }
+
+  /* Crop editor becomes a dedicated smartphone adjustment page. */
+  #leftCropEditor:not([hidden]){
+    display:flex!important;
+    position:fixed!important;
+    inset:0 0 58px 0!important;
+    z-index:260!important;
+    width:auto!important;
+    height:auto!important;
+    max-height:none!important;
+    padding:16px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:#fff!important;
+    flex-direction:column!important;
+    overflow:auto!important;
+  }
+  #leftCropEditor .left-crop-head{
+    flex:0 0 auto;
+    min-height:40px;
+    margin-bottom:12px;
+  }
+  #leftCropEditor .left-crop-head strong{font-size:15px!important}
+  #leftCropEditor .left-crop-stage{
+    width:min(78vw,330px)!important;
+    height:min(78vw,330px)!important;
+    margin:10px auto 14px!important;
+    flex:0 0 auto!important;
+  }
+  #leftCropEditor #leftCropZoom{
+    width:min(78vw,330px)!important;
+    margin:10px auto!important;
+  }
+  #leftCropEditor > .small{font-size:11px!important;text-align:center!important}
+  #leftCropEditor .left-crop-actions{
+    width:min(78vw,330px)!important;
+    margin:14px auto 0!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+  }
+  #leftCropEditor .left-crop-actions .btn{height:42px!important;font-size:12px!important}
+
+  /* Placement page */
+  .stage-shell{min-height:0!important;height:100%!important;gap:5px!important}
+  .stage-area-toolbar{min-height:32px!important;gap:4px!important}
+  .stage-area-label{display:none!important}
+  .stage-toolbar-actions{width:100%!important;justify-content:flex-end!important;gap:4px!important}
+  .stage-toolbar-actions .btn{height:30px!important}
+  .toolbar-scale-check{
+    order:2!important;
+    width:auto!important;
+    max-width:48vw;
+    justify-content:flex-start!important;
+    padding:0 4px!important;
+    font-size:8px!important;
+    white-space:normal!important;
+    line-height:1.15!important;
+  }
+  .stage-toolbar-row{order:3!important;flex:0 0 auto!important}
+  #settingsMenuBtn.toolbar-settings-btn{position:static!important;inset:auto!important;margin:0!important}
+  .stage{
+    flex:1!important;
+    min-height:0!important;
+    height:auto!important;
+    border-radius:10px!important;
+  }
+  .canvas{touch-action:none!important}
+  .placed{-webkit-touch-callout:none!important}
+
+  .mobile-placement-tray{
+    display:flex;
+    flex:0 0 auto;
+    min-height:64px;
+    align-items:center;
+    gap:7px;
+    padding:5px 7px;
+    border:1px solid #e5e8ea;
+    border-radius:9px;
+    background:#fff;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+  }
+  .mobile-placement-tray::-webkit-scrollbar{display:none}
+  .mobile-tray-empty{
+    width:100%;
+    color:#8a9298;
+    font-size:9px;
+    text-align:center;
+    padding:10px 4px;
+  }
+  .mobile-tray-item{
+    flex:0 0 52px;
+    width:52px;
+    padding:0;
+    border:0;
+    background:transparent;
+    text-align:center;
+    color:#525a60;
+  }
+  .mobile-tray-avatar{
+    position:relative;
+    width:42px;
+    height:42px;
+    margin:auto;
+    background:#eee;
+    overflow:hidden;
+  }
+  .mobile-tray-avatar img{
+    position:absolute;
+    left:50%;top:50%;
+    transform-origin:center center;
+  }
+  .mobile-tray-avatar.mode-circle{border-radius:50%;overflow:hidden}
+  .mobile-tray-avatar.mode-square{border-radius:18%;overflow:hidden}
+  .mobile-tray-avatar.mode-original{border-radius:0;overflow:visible;background:transparent}
+  .mobile-tray-avatar.use-text-border{border:2px solid var(--icon-border-color,currentColor);box-sizing:border-box}
+  .mobile-tray-avatar.mode-original.use-text-border{border:0}
+  .mobile-tray-name{
+    margin-top:2px;
+    font-size:7.5px;
+    line-height:1.05;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* Display settings becomes a phone bottom sheet only on phone. */
+  #settings{
+    position:fixed!important;
+    left:8px!important;
+    right:8px!important;
+    top:auto!important;
+    bottom:66px!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    max-height:72vh!important;
+    border-radius:14px!important;
+    z-index:240!important;
+  }
+
+  /* Bottom navigation between list and placement. */
+  .mobile-bottom-nav{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    height:58px;
+    z-index:300;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    padding:5px max(7px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));
+    border-top:1px solid #e2e5e7;
+    background:rgba(255,255,255,.97);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .mobile-nav-btn{
+    border:0;
+    background:transparent;
+    color:#8a9298;
+    font-size:11px;
+    font-weight:750;
+    border-radius:9px;
+  }
+  .mobile-nav-btn.active{color:#30383e;background:#f0f5f8}
+
+  /* Long-press comment editor. */
+  .mobile-comment-sheet.open{display:grid!important}
+  .mobile-comment-sheet{
+    position:fixed;
+    inset:0;
+    z-index:340;
+    place-items:end stretch;
+    background:rgba(0,0,0,.24);
+  }
+  .mobile-comment-panel{
+    width:100%;
+    max-height:74vh;
+    overflow:auto;
+    background:#fff;
+    border-radius:16px 16px 0 0;
+    padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 36px rgba(0,0,0,.12);
+  }
+  .mobile-comment-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+  .mobile-comment-head strong{font-size:13px}
+  #mobileCommentInput{
+    width:100%;
+    min-height:120px;
+    resize:vertical;
+    border:1px solid #dfe3e6;
+    border-radius:9px;
+    padding:9px;
+    font-size:14px;
+    line-height:1.45;
+    outline:none;
+  }
+  #mobileCommentInput:focus{border-color:#aec8d8;box-shadow:0 0 0 3px rgba(132,181,211,.12)}
+  .mobile-comment-label{margin:10px 0 5px;font-size:9px;color:#7c848a}
+  .mobile-comment-directions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .mobile-comment-dir{
+    height:38px;
+    border:1px solid #dfe3e6;
+    border-radius:8px;
+    background:#fff;
+    color:#667078;
+    font-size:18px;
+  }
+  .mobile-comment-dir.active{border-color:var(--accent);background:var(--soft);color:#354852}
+  .mobile-comment-save{width:100%;height:42px!important;margin-top:12px;font-size:12px!important}
+}
+
 </style>
 </head>
 <body>
@@ -2563,6 +2863,8 @@ button{cursor:pointer}
           <span class="library-count" id="libraryCount">0件</span>
         </div>
 
+        <div class="mobile-icon-help">タップでON / OFF　・　長押しで切り抜き調整</div>
+
         <div class="library-loading" id="libraryLoading">
           <div class="loading-inner">
             <div class="loading-spinner" aria-hidden="true"></div>
@@ -2619,6 +2921,7 @@ button{cursor:pointer}
           </div>
         </div>
       </div>
+      <div class="mobile-placement-tray" id="mobilePlacementTray" aria-label="選択中の未配置アイコン"></div>
       <div class="stage">
         <div class="canvas" id="canvas">
           <img class="template-img" id="templateImg" alt="">
@@ -2756,6 +3059,31 @@ button{cursor:pointer}
     </section>
   </div>
 </div>
+
+<nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="スマホ画面切り替え">
+  <button class="mobile-nav-btn active" id="mobileIconsViewBtn" type="button">アイコン一覧</button>
+  <button class="mobile-nav-btn" id="mobileStageViewBtn" type="button">配置</button>
+</nav>
+
+<div class="mobile-comment-sheet" id="mobileCommentSheet" aria-hidden="true">
+  <div class="mobile-comment-panel">
+    <div class="mobile-comment-head">
+      <strong id="mobileCommentName">コメント</strong>
+      <button class="iconbtn" id="mobileCommentClose" type="button">×</button>
+    </div>
+    <textarea id="mobileCommentInput" placeholder="コメント"></textarea>
+    <div class="mobile-comment-label">コメントの位置</div>
+    <div class="mobile-comment-directions" id="mobileCommentDirections">
+      <button class="mobile-comment-dir" type="button" data-pos="top" aria-label="上">︿</button>
+      <button class="mobile-comment-dir" type="button" data-pos="bottom" aria-label="下">﹀</button>
+      <button class="mobile-comment-dir" type="button" data-pos="left" aria-label="左">〈</button>
+      <button class="mobile-comment-dir" type="button" data-pos="right" aria-label="右">〉</button>
+    </div>
+    <button class="btn primary mobile-comment-save" id="mobileCommentSave" type="button">保存</button>
+  </div>
+</div>
+
+<input id="mobileTemplateFileInput" type="file" accept="image/*">
 
 <div class="modal" id="helpModal">
   <div class="modalbox">
@@ -3803,6 +4131,302 @@ function refreshSourceCropPreview(id){
   applyIconImageStyle(img,l.crop,currentIconShape());
 }
 
+
+function isMobileLayout(){
+  return !!window.matchMedia?.('(max-width:760px)').matches;
+}
+function isMobileItemSelected(local){
+  return !!(local?.placed || local?.mobileSelected===true);
+}
+function toggleMobileItemSelection(id){
+  const state=appState();
+  const local=state.items?.[id]||(state.items[id]={placed:false,x:50,y:50,comment:'',commentPosition:null,crop:{x:0,y:0,zoom:1},useColor:false,color:'#202327'});
+  const selected=isMobileItemSelected(local);
+  if(selected){
+    local.mobileSelected=false;
+    local.placed=false;
+  }else{
+    local.mobileSelected=true;
+  }
+  saveState(state);
+  saveCurrentTemplateState(state);
+  const it=items.find(item=>item.id===id);
+  if(it)it.local=local;
+  renderLibrary();
+  renderPlaced();
+}
+function startMobileLibraryInteraction(e,it,card){
+  if(e.button!=null&&e.button!==0)return;
+  const startX=e.clientX,startY=e.clientY;
+  let longPressed=false,cancelled=false;
+  const LONG_PRESS=540;
+  const timer=setTimeout(()=>{
+    if(cancelled)return;
+    longPressed=true;
+    try{card.setPointerCapture?.(e.pointerId)}catch{}
+    if(navigator.vibrate)try{navigator.vibrate(12)}catch{}
+    openLeftCropEditor(it.id);
+  },LONG_PRESS);
+  const cancelTimer=()=>{cancelled=true;clearTimeout(timer)};
+  const move=ev=>{
+    if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>9)cancelTimer();
+  };
+  const finish=ev=>{
+    clearTimeout(timer);
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',finish);
+    window.removeEventListener('pointercancel',cancelOnly);
+    if(!cancelled&&!longPressed&&ev.type==='pointerup'){
+      ev.preventDefault();
+      toggleMobileItemSelection(it.id);
+    }
+  };
+  const cancelOnly=()=>{
+    cancelTimer();
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',finish);
+    window.removeEventListener('pointercancel',cancelOnly);
+  };
+  window.addEventListener('pointermove',move,{passive:true});
+  window.addEventListener('pointerup',finish,{once:true});
+  window.addEventListener('pointercancel',cancelOnly,{once:true});
+}
+
+function renderMobilePlacementTray(){
+  const tray=$('#mobilePlacementTray');
+  if(!tray)return;
+  tray.replaceChildren();
+  if(!isMobileLayout())return;
+  const state=appState(),display=state.display||{};
+  const pending=items.filter(it=>{
+    const local=state.items?.[it.id];
+    return isMobileItemSelected(local)&&!local?.placed;
+  });
+  if(!pending.length){
+    const empty=document.createElement('div');
+    empty.className='mobile-tray-empty';
+    empty.textContent=items.length?'アイコン一覧でONにした未配置アイコンがここに出ます':'Notionを読み込むとアイコンが出ます';
+    tray.appendChild(empty);
+    return;
+  }
+  pending.forEach(it=>{
+    const local=state.items?.[it.id]||{};
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='mobile-tray-item';
+    btn.title='タップしてテンプレ中央に配置';
+    const av=document.createElement('div');
+    av.className='mobile-tray-avatar';
+    applyShapeClass(av);
+    if(display.iconBorderUseTextColor){
+      av.classList.add('use-text-border');
+      av.style.setProperty('--icon-border-color',safeColor(it.color)||'#ffffff');
+    }
+    const img=document.createElement('img');
+    img.draggable=false;
+    img.src=displayImage(it)||'';
+    img.onerror=()=>img.style.display='none';
+    bindIconImage(img,local.crop,currentIconShape());
+    av.appendChild(img);
+    const name=document.createElement('div');
+    name.className='mobile-tray-name';
+    name.textContent=it.name||'';
+    btn.append(av,name);
+    btn.addEventListener('click',ev=>{
+      ev.preventDefault();
+      if(!templateSpaceReady()){
+        alert('先にテンプレ画像を入れてください。');
+        return;
+      }
+      placeItem(it.id,50,50,true);
+      bringPlacedToFront(it.id);
+      renderLibrary();
+      renderMobilePlacementTray();
+    });
+    tray.appendChild(btn);
+  });
+}
+
+let mobileCommentEditingId=null;
+let mobileCommentDraftPosition='top';
+function syncMobileCommentDirectionButtons(){
+  document.querySelectorAll('#mobileCommentDirections .mobile-comment-dir').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.pos===mobileCommentDraftPosition);
+  });
+}
+function openMobileCommentEditor(id){
+  const state=appState(),local=state.items?.[id];
+  if(!local)return;
+  const it=items.find(item=>item.id===id);
+  mobileCommentEditingId=id;
+  mobileCommentDraftPosition=local.commentPosition||'top';
+  $('#mobileCommentName').textContent=it?.name?`${it.name} — コメント`:'コメント';
+  $('#mobileCommentInput').value=local.comment||'';
+  syncMobileCommentDirectionButtons();
+  const sheet=$('#mobileCommentSheet');
+  sheet.classList.add('open');
+  sheet.setAttribute('aria-hidden','false');
+  setTimeout(()=>$('#mobileCommentInput')?.focus(),30);
+}
+function closeMobileCommentEditor(save=true){
+  const sheet=$('#mobileCommentSheet');
+  if(save&&mobileCommentEditingId){
+    const id=mobileCommentEditingId;
+    const value=$('#mobileCommentInput')?.value||'';
+    mutate(state=>{
+      const local=state.items?.[id];
+      if(!local)return;
+      local.comment=value;
+      local.commentPosition=mobileCommentDraftPosition||'top';
+    });
+    const it=items.find(item=>item.id===id);
+    if(it)it.local=appState().items[id];
+    renderPlaced();
+  }
+  mobileCommentEditingId=null;
+  sheet?.classList.remove('open');
+  sheet?.setAttribute('aria-hidden','true');
+}
+
+function startMobilePlacedInteraction(e,id,el){
+  if(e.button!=null&&e.button!==0)return;
+  if(e.target.closest('textarea,input,select,button'))return;
+  bringPlacedToFront(id,el);
+  e.preventDefault();
+  e.stopPropagation();
+
+  const canvas=$('#canvas');
+  const geom=templateGeometry();
+  const useTemplate=templateSpaceReady()&&!!geom;
+  const r=useTemplate?{width:geom.visible.width,height:geom.visible.height}:canvas.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+  const state=appState(),local=state.items?.[id];
+  if(!local)return;
+
+  const startX=e.clientX,startY=e.clientY;
+  const startPoint=useTemplate?getTemplatePoint(local,geom):{x:Number(local.x??50),y:Number(local.y??50)};
+  const startPctX=Number(startPoint.x??50),startPctY=Number(startPoint.y??50);
+  let lastX=startX,lastY=startY,moved=false,longPressed=false,raf=0;
+  el._draggedByPointer=false;
+  const timer=setTimeout(()=>{
+    if(moved)return;
+    longPressed=true;
+    if(navigator.vibrate)try{navigator.vibrate(12)}catch{}
+    openMobileCommentEditor(id);
+  },540);
+  try{el.setPointerCapture?.(e.pointerId)}catch{}
+
+  const paint=()=>{
+    raf=0;
+    if(!moved||longPressed)return;
+    const dx=(lastX-startX)/r.width*100;
+    const dy=(lastY-startY)/r.height*100;
+    el.style.left=Math.max(2,Math.min(98,startPctX+dx))+'%';
+    el.style.top=Math.max(2,Math.min(98,startPctY+dy))+'%';
+  };
+  const move=ev=>{
+    if(longPressed)return;
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!moved&&Math.hypot(lastX-startX,lastY-startY)>7){
+      moved=true;
+      clearTimeout(timer);
+      el._draggedByPointer=true;
+      el.classList.add('dragging');
+    }
+    if(moved&&!raf)raf=requestAnimationFrame(paint);
+  };
+  const finish=()=>{
+    clearTimeout(timer);
+    if(raf){cancelAnimationFrame(raf);paint()}
+    el.removeEventListener('pointermove',move);
+    el.removeEventListener('pointerup',finish);
+    el.removeEventListener('pointercancel',finish);
+    el.classList.remove('dragging');
+    try{el.releasePointerCapture?.(e.pointerId)}catch{}
+    if(moved&&!longPressed){
+      const x=parseFloat(el.style.left)||startPctX;
+      const y=parseFloat(el.style.top)||startPctY;
+      mutate(s=>{
+        const l=s.items?.[id];if(!l)return;
+        if(useTemplate){
+          l.templateX=x;l.templateY=y;l.coordVersion=2;
+          const legacy=templateToLegacyPoint(x,y,geom);l.x=legacy.x;l.y=legacy.y;
+        }else{l.x=x;l.y=y}
+      });
+      const it=items.find(item=>item.id===id);
+      if(it)it.local=appState().items[id];
+      setTimeout(()=>{el._draggedByPointer=false},120);
+    }
+  };
+  el.addEventListener('pointermove',move);
+  el.addEventListener('pointerup',finish,{once:true});
+  el.addEventListener('pointercancel',finish,{once:true});
+}
+
+function setMobileMainView(view,remember=true){
+  if(!isMobileLayout())return;
+  const next=view==='stage'?'stage':'icons';
+  document.body.classList.toggle('mobile-view-icons',next==='icons');
+  document.body.classList.toggle('mobile-view-stage',next==='stage');
+  $('#mobileIconsViewBtn')?.classList.toggle('active',next==='icons');
+  $('#mobileStageViewBtn')?.classList.toggle('active',next==='stage');
+  if(remember)localStorage.setItem('magiaMatrix.mobileView.v1',next);
+  if(next==='stage'){
+    requestAnimationFrame(()=>{
+      syncTemplateOverlayRect();
+      renderPlaced();
+      scheduleTemplateOverlaySync();
+    });
+  }else{
+    renderLibrary();
+  }
+}
+function setupMobileUI(){
+  const mq=window.matchMedia('(max-width:760px)');
+  const apply=()=>{
+    if(mq.matches){
+      document.body.classList.add('mobile-ui');
+      setMobileMainView(localStorage.getItem('magiaMatrix.mobileView.v1')||'icons',false);
+      renderMobilePlacementTray();
+    }else{
+      document.body.classList.remove('mobile-ui','mobile-view-icons','mobile-view-stage');
+      closeMobileCommentEditor(false);
+    }
+  };
+  $('#mobileIconsViewBtn')?.addEventListener('click',()=>setMobileMainView('icons'));
+  $('#mobileStageViewBtn')?.addEventListener('click',()=>setMobileMainView('stage'));
+  $('#mobileCommentClose')?.addEventListener('click',()=>closeMobileCommentEditor(true));
+  $('#mobileCommentSave')?.addEventListener('click',()=>closeMobileCommentEditor(true));
+  $('#mobileCommentSheet')?.addEventListener('pointerdown',e=>{
+    if(e.target===$('#mobileCommentSheet'))closeMobileCommentEditor(true);
+  });
+  document.querySelectorAll('#mobileCommentDirections .mobile-comment-dir').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      mobileCommentDraftPosition=btn.dataset.pos||'top';
+      syncMobileCommentDirectionButtons();
+    });
+  });
+  const picker=$('#mobileTemplateFileInput');
+  $('#templateDrop')?.addEventListener('click',()=>{
+    if(!isMobileLayout())return;
+    picker?.click();
+  });
+  picker?.addEventListener('change',async()=>{
+    const file=picker.files?.[0];
+    if(file){
+      try{await saveTemplateFile(file)}catch(err){console.error(err);alert('テンプレ画像を読み込めませんでした。')}
+      picker.value='';
+      scheduleTemplateOverlaySync();
+      renderPlaced();
+    }
+  });
+  document.addEventListener('contextmenu',e=>{
+    if(isMobileLayout()&&e.target.closest('.source-card,.placed'))e.preventDefault();
+  });
+  try{mq.addEventListener('change',apply)}catch{mq.addListener?.(apply)}
+  apply();
+}
+
 function renderLibrary(){
   const list=$('#iconList');
   list.replaceChildren();
@@ -3810,6 +4434,7 @@ function renderLibrary(){
 
   if(!items.length){
     list.innerHTML='<div class="help" style="grid-column:1/-1;padding:15px 4px">Notionを読み込むと、ここにアイコンが並びます。</div>';
+    renderMobilePlacementTray();
     return;
   }
 
@@ -3822,9 +4447,11 @@ function renderLibrary(){
     card.className='source-card';
     card.dataset.id=it.id;
     card.draggable=false;
+    card.classList.toggle('mobile-selected',isMobileItemSelected(l));
 
     card.addEventListener('pointerdown',e=>{
-      startLibraryDrag(e,it,card);
+      if(isMobileLayout())startMobileLibraryInteraction(e,it,card);
+      else startLibraryDrag(e,it,card);
     });
 
     const av=document.createElement('div');
@@ -3856,6 +4483,7 @@ function renderLibrary(){
   });
 
   list.append(frag);
+  renderMobilePlacementTray();
 }
 function startLibraryDrag(e,it,card){
   if(e.button!=null&&e.button!==0)return;
@@ -4246,6 +4874,7 @@ function openInlineCommentEditor(id,el){
 
 function setupPlacedClickBehavior(el,id){
   el.addEventListener('dblclick',e=>{
+    if(isMobileLayout())return;
     if(e.target.closest('.inline-comment-editor'))return;
     if(el._draggedByPointer)return;
     e.preventDefault();e.stopPropagation();openInlineCommentEditor(id,el);
@@ -4561,8 +5190,10 @@ function renderPlaced(){
 
   document.querySelectorAll('.placed-name').forEach(el=>applyTextOutline(el,'name'));
   document.querySelectorAll('.placed-comment').forEach(el=>applyTextOutline(el,'comment'));
+  renderMobilePlacementTray();
 }
 function startPlacedDrag(e,id,el){
+  if(isMobileLayout()){startMobilePlacedInteraction(e,id,el);return;}
   if(e.button!=null&&e.button!==0)return;
   if(e.target.closest('.inline-comment-editor,textarea,input,select,button'))return;
 
@@ -5683,6 +6314,7 @@ setupCrop();
 setupLeftCrop();
 restoreDisplayPanelState();
 restoreLibraryPage();
+setupMobileUI();
 
 restoreLoadedCache();
 restoreTemplate();
